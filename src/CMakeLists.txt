@@ -1,6 +1,7 @@
 set(BINARY ${CMAKE_PROJECT_NAME})
 
 set(SOURCES
+    vector.cpp
     display.cpp
     main.cpp
 )
