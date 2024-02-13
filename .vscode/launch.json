@@ -1,0 +1,22 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    //"preLaunchTask": "C/C++: Build",
+    "version": "0.2.0",
+    "configurations": [     
+        {
+            "name": "C/C++: Internal and slow",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/src/cpu-renderer_run",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "logging": {
+                "moduleLoad": false
+            }
+        },
+    ]
+}
