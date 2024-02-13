@@ -22,8 +22,7 @@ SDL_API initialize_window(void)
         fprintf(stderr, "Error when creating the window : %s\n", SDL_GetError());
         return result;
     }
-    SDL_SetWindowFullscreen(result.window, true);
-    result.fullscreen = true;
+    result.fullscreen = false;
 
     result.renderer = SDL_CreateRenderer(result.window, 0, 0);
     if (!result.renderer)
@@ -65,18 +64,19 @@ void clear_color_buffer(ColorBuffer& color_buffer, uint32_t color)
 *******************************************************************************/
 void create_color_buffer(SDL_API sdl, ColorBuffer& color_buffer)
 {
-    SDL_DisplayID display = SDL_GetDisplayForWindow(sdl.window);
-    const SDL_DisplayMode* display_mode = SDL_GetCurrentDisplayMode(display);
-    color_buffer.memory = (uint32_t*)malloc(sizeof(uint32_t) * display_mode->w * display_mode->h);
+    int width = 0;
+    int height = 0;
+    SDL_GetWindowSize(sdl.window, &width, &height);
+    color_buffer.memory = (uint32_t*)malloc(sizeof(uint32_t) * width * height);
     color_buffer.texture = SDL_CreateTexture(
         sdl.renderer,
         SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING,
-        display_mode->w,
-        display_mode->h
+        width,
+        height
     );
-    color_buffer.width = display_mode->w;
-    color_buffer.height = display_mode->h;
+    color_buffer.width = width;
+    color_buffer.height = height;
 }
 
 /*******************************************************************************
@@ -109,8 +109,22 @@ void resize_color_buffer(SDL_API sdl, ColorBuffer& color_buffer, uint32_t width,
 *******************************************************************************/
 void destroy_color_buffer(ColorBuffer& color_buffer)
 {
+    color_buffer.width = 0;
+    color_buffer.height = 0;
     SDL_DestroyTexture(color_buffer.texture);
     free(color_buffer.memory);
+    color_buffer.memory = nullptr;
+}
+
+/*******************************************************************************
+ * Draw a single pixel
+*******************************************************************************/
+void draw_pixel(ColorBuffer& color_buffer, uint32_t x, uint32_t y, uint32_t color)
+{
+    if (x < color_buffer.width && y < color_buffer.height)
+    {
+        color_buffer.memory[color_buffer.width * y + x] = color;
+    }
 }
 
 /*******************************************************************************
@@ -118,11 +132,14 @@ void destroy_color_buffer(ColorBuffer& color_buffer)
 *******************************************************************************/
 void draw_grid(ColorBuffer& color_buffer, uint32_t size, uint32_t color)
 {
-    for (uint32_t row = 0; row < color_buffer.height; row += size)
+    if (size > 0)
     {
-        for (uint32_t column = 0; column < color_buffer.width; column += size)
+        for (uint32_t row = 0; row < color_buffer.height; row += size)
         {
-            color_buffer.memory[color_buffer.width * row + column] = color;
+            for (uint32_t column = 0; column < color_buffer.width; column += size)
+            {
+                color_buffer.memory[color_buffer.width * row + column] = color;
+            }
         }
     }
 }
@@ -132,11 +149,14 @@ void draw_grid(ColorBuffer& color_buffer, uint32_t size, uint32_t color)
 *******************************************************************************/
 void draw_rect(ColorBuffer& color_buffer, uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t color)
 {
-    for (uint32_t row = y; row < (y + height); ++row)
+    if ((x + width) <= color_buffer.width && (y + height) <= color_buffer.height)
     {
-        for (uint32_t column = x; column < (x + width); ++column)
+        for (uint32_t row = y; row < (y + height); ++row)
         {
-            color_buffer.memory[color_buffer.width * row + column] = color;
+            for (uint32_t column = x; column < (x + width); ++column)
+            {
+                color_buffer.memory[color_buffer.width * row + column] = color;
+            }
         }
     }
 }

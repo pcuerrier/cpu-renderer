@@ -22,7 +22,7 @@
             "name": "C/C++: Windows",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/src/cpu-renderer_run.exe",
+            "program": "${workspaceFolder}\\build\\test\\Debug\\cpu-renderer_tests.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

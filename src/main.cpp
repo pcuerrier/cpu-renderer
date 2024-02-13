@@ -63,6 +63,8 @@ void render(SDL_API sdl, ColorBuffer& color_buffer)
 
     draw_grid(color_buffer, 20, 0xFFE4E6EB);
 
+    //draw_pixel(color_buffer, 20, 20, 0xFFFF00FF);
+
     uint32_t x = 56;
     uint32_t y = 127;
     uint32_t width = 350;
