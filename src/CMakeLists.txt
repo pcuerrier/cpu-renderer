@@ -1,6 +1,7 @@
 set(BINARY ${CMAKE_PROJECT_NAME})
 
 set(SOURCES
+    display.cpp
     main.cpp
 )
 
@@ -10,7 +11,11 @@ add_library(${BINARY}_lib STATIC ${SOURCES})
 message(CMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}")
 message(ROOT_DIR="${ROOT_DIR}")
 
+IF (WIN32)
+target_compile_options(${BINARY}_run PRIVATE -W4 -WX)
+ELSE()
 target_compile_options(${BINARY}_run PRIVATE -Wall -Wextra -Wpedantic -Werror)
+ENDIF()
 
 target_include_directories(${BINARY}_run PUBLIC ${CMAKE_BINARY_DIR}/../lib/SDL/include)
 target_include_directories(${BINARY}_lib PUBLIC ${CMAKE_BINARY_DIR}/../lib/SDL/include)

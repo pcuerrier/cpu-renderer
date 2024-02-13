@@ -6,10 +6,23 @@
     "version": "0.2.0",
     "configurations": [     
         {
-            "name": "C/C++: Internal and slow",
+            "name": "C/C++: Linux",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/src/cpu-renderer_run",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "logging": {
+                "moduleLoad": false
+            }
+        },
+        {
+            "name": "C/C++: Windows",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/src/cpu-renderer_run.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
