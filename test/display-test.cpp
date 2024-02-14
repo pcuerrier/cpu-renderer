@@ -196,18 +196,35 @@ TEST(Display, draw_rect)
         ASSERT_EQ(color_buffer.memory[i], 0x00000000);
     }
 
-    draw_rect(color_buffer, 9, 9, 10, 10, 0xFFFFFFFF); // Out-of-bounds
+    draw_rect(color_buffer, 9, 9, 10, 10, 0xFFFFFFFF); // Out-of-bounds but fill single pixel
     for (uint32_t i = 0; i < size; ++i)
     {
-        ASSERT_EQ(color_buffer.memory[i], 0x00000000);
+        if (i == 9 * 10 + 9)
+        {
+            ASSERT_EQ(color_buffer.memory[i], 0xFFFFFFFF);    
+        }
+        else
+        {
+            ASSERT_EQ(color_buffer.memory[i], 0x00000000);
+        }
     }
 
-    draw_rect(color_buffer, 0, 0, 11, 11, 0xFFFFFFFF); // Out-of-bounds
+    // Reset buffer
     for (uint32_t i = 0; i < size; ++i)
     {
-        ASSERT_EQ(color_buffer.memory[i], 0x00000000);
+        color_buffer.memory[i] = 0x00000000;
+    }
+    draw_rect(color_buffer, 0, 0, 11, 11, 0xFFFFFFFF); // Out-of-bounds but fill buffer
+    for (uint32_t i = 0; i < size; ++i)
+    {
+        ASSERT_EQ(color_buffer.memory[i], 0xFFFFFFFF);
     }
     
+    // Reset buffer
+    for (uint32_t i = 0; i < size; ++i)
+    {
+        color_buffer.memory[i] = 0x00000000;
+    }
     draw_rect(color_buffer, 2, 2, 4, 4, 0xFFFFFFFF);
     for (uint32_t i = 0; i < pitch; i += 5)
     {

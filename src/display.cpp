@@ -119,9 +119,9 @@ void destroy_color_buffer(ColorBuffer& color_buffer)
 /*******************************************************************************
  * Draw a single pixel
 *******************************************************************************/
-void draw_pixel(ColorBuffer& color_buffer, uint32_t x, uint32_t y, uint32_t color)
+void draw_pixel(ColorBuffer& color_buffer, int x, int y, uint32_t color)
 {
-    if (x < color_buffer.width && y < color_buffer.height)
+    if (x >= 0 && x < (int)color_buffer.width && y >= 0 && y < (int)color_buffer.height)
     {
         color_buffer.memory[color_buffer.width * y + x] = color;
     }
@@ -147,16 +147,15 @@ void draw_grid(ColorBuffer& color_buffer, uint32_t size, uint32_t color)
 /*******************************************************************************
  * Draw Rectangle
 *******************************************************************************/
-void draw_rect(ColorBuffer& color_buffer, uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t color)
+void draw_rect(ColorBuffer& color_buffer, int x, int y, uint32_t width, uint32_t height, uint32_t color)
 {
-    if ((x + width) <= color_buffer.width && (y + height) <= color_buffer.height)
+    for (int row = 0; row < (int)height; ++row)
     {
-        for (uint32_t row = y; row < (y + height); ++row)
+        for (int column = 0; column < (int)width; ++column)
         {
-            for (uint32_t column = x; column < (x + width); ++column)
-            {
-                color_buffer.memory[color_buffer.width * row + column] = color;
-            }
+            int current_x = x + column;
+            int current_y = y + row;
+            draw_pixel(color_buffer, current_x, current_y, color);
         }
     }
 }
