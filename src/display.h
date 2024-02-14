@@ -31,7 +31,8 @@ void    destroy_window(SDL_API& sdl);
 *******************************************************************************/
 void clear_color_buffer(ColorBuffer& color_buffer, uint32_t color);
 void create_color_buffer(SDL_API sdl, ColorBuffer& color_buffer);
-void resize_color_buffer(SDL_API sdl, ColorBuffer& color_buffer, uint32_t width, uint32_t height);
+void resize_color_buffer(SDL_API sdl, ColorBuffer& color_buffer, uint32_t width,
+                         uint32_t height);
 void destroy_color_buffer(ColorBuffer& color_buffer);
 
 /*******************************************************************************
@@ -39,4 +40,5 @@ void destroy_color_buffer(ColorBuffer& color_buffer);
 *******************************************************************************/
 void draw_pixel(ColorBuffer& color_buffer, int x, int y, uint32_t color);
 void draw_grid(ColorBuffer& color_buffer, uint32_t size, uint32_t color);
-void draw_rect(ColorBuffer& color_buffer, int x, int y, uint32_t width, uint32_t height, uint32_t color);
+void draw_rect(ColorBuffer& color_buffer, int x, int y, uint32_t width,
+               uint32_t height, uint32_t color);

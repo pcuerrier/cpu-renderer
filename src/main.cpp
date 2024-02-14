@@ -1,5 +1,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_timer.h>
 
 #include "display.h"
 #include "vector.h"
@@ -9,6 +10,15 @@
 *******************************************************************************/
 #define UNUSED(x) (void)(x)
 
+/*******************************************************************************
+ * Constants
+*******************************************************************************/
+const int FPS = 30;
+const float FRAME_TARGET_TIME = (1000.0f) / FPS;
+
+/*******************************************************************************
+ * Globals
+*******************************************************************************/
 static vec3_t camera_pos = { 0.0f, 0.0f, -5.0f };
 
 /*******************************************************************************
@@ -79,13 +89,22 @@ vec2_t project(const vec3_t v, const float scale)
 *******************************************************************************/
 void update(const vec3_t* points, vec2_t* projected_points, uint32_t num_points)
 {
+    static vec3_t cube_rotation = {};
+    cube_rotation.x += 0.01f;
+    cube_rotation.y += 0.01f;
+    cube_rotation.z += 0.01f;
     for (uint32_t i = 0; i < num_points; ++i)
     {
         vec3_t point = points[i];
-        // Move away from camera
-        point.z -= camera_pos.z;
 
-        projected_points[i] = project(point, 640.0f);
+        vec3_t transformed_point = vec3_rotate_x(point, cube_rotation.x);
+        transformed_point = vec3_rotate_y(transformed_point, cube_rotation.y);
+        transformed_point = vec3_rotate_z(transformed_point, cube_rotation.z);
+
+        // Move away from camera
+        transformed_point.z -= camera_pos.z;
+
+        projected_points[i] = project(transformed_point, 640.0f);
     }
 }
 
@@ -93,7 +112,8 @@ void update(const vec3_t* points, vec2_t* projected_points, uint32_t num_points)
 /*******************************************************************************
  * Render Color Buffer
 *******************************************************************************/
-void render(SDL_API sdl, ColorBuffer& color_buffer, vec2_t* projected_points, uint32_t num_points)
+void render(SDL_API sdl, ColorBuffer& color_buffer, vec2_t* projected_points,
+            uint32_t num_points)
 {
     draw_grid(color_buffer, 20, 0xFFE4E6EB);
 
@@ -102,8 +122,8 @@ void render(SDL_API sdl, ColorBuffer& color_buffer, vec2_t* projected_points, ui
         vec2_t point = projected_points[i];
         draw_rect(
             color_buffer,
-            point.x + (color_buffer.width / 2),
-            point.y + (color_buffer.height / 2),
+            (int)(point.x + (color_buffer.width / 2)),
+            (int)(point.y + (color_buffer.height / 2)),
             4,
             4,
             0xFFFFFF00

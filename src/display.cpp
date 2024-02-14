@@ -16,10 +16,12 @@ SDL_API initialize_window(void)
         return result;
     }
 
-    result.window = SDL_CreateWindow("CPU-Renderer", 800, 600, SDL_WINDOW_RESIZABLE);
+    result.window = SDL_CreateWindow("CPU-Renderer", 800, 600,
+                                     SDL_WINDOW_RESIZABLE);
     if (!result.window)
     {
-        fprintf(stderr, "Error when creating the window : %s\n", SDL_GetError());
+        fprintf(stderr, "Error when creating the window : %s\n",
+                SDL_GetError());
         return result;
     }
     result.fullscreen = false;
@@ -27,7 +29,8 @@ SDL_API initialize_window(void)
     result.renderer = SDL_CreateRenderer(result.window, 0, 0);
     if (!result.renderer)
     {
-        fprintf(stderr, "Error when creating the renderer : %s\n", SDL_GetError());
+        fprintf(stderr, "Error when creating the renderer : %s\n",
+                SDL_GetError());
         return result;
     }
 
@@ -82,7 +85,8 @@ void create_color_buffer(SDL_API sdl, ColorBuffer& color_buffer)
 /*******************************************************************************
  * Resize Color Buffer
 *******************************************************************************/
-void resize_color_buffer(SDL_API sdl, ColorBuffer& color_buffer, uint32_t width, uint32_t height)
+void resize_color_buffer(SDL_API sdl, ColorBuffer& color_buffer, uint32_t width,
+                         uint32_t height)
 {
     if (color_buffer.texture)
     {
@@ -121,7 +125,8 @@ void destroy_color_buffer(ColorBuffer& color_buffer)
 *******************************************************************************/
 void draw_pixel(ColorBuffer& color_buffer, int x, int y, uint32_t color)
 {
-    if (x >= 0 && x < (int)color_buffer.width && y >= 0 && y < (int)color_buffer.height)
+    if (x >= 0 && x < (int)color_buffer.width &&
+        y >= 0 && y < (int)color_buffer.height)
     {
         color_buffer.memory[color_buffer.width * y + x] = color;
     }
@@ -136,9 +141,9 @@ void draw_grid(ColorBuffer& color_buffer, uint32_t size, uint32_t color)
     {
         for (uint32_t row = 0; row < color_buffer.height; row += size)
         {
-            for (uint32_t column = 0; column < color_buffer.width; column += size)
+            for (uint32_t col = 0; col < color_buffer.width; col += size)
             {
-                color_buffer.memory[color_buffer.width * row + column] = color;
+                color_buffer.memory[color_buffer.width * row + col] = color;
             }
         }
     }
@@ -147,7 +152,8 @@ void draw_grid(ColorBuffer& color_buffer, uint32_t size, uint32_t color)
 /*******************************************************************************
  * Draw Rectangle
 *******************************************************************************/
-void draw_rect(ColorBuffer& color_buffer, int x, int y, uint32_t width, uint32_t height, uint32_t color)
+void draw_rect(ColorBuffer& color_buffer, int x, int y, uint32_t width,
+               uint32_t height, uint32_t color)
 {
     for (int row = 0; row < (int)height; ++row)
     {
