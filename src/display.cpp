@@ -169,13 +169,40 @@ void draw_rect(ColorBuffer& color_buffer, int x, int y, uint32_t width,
 /*******************************************************************************
  * Draw Line
 *******************************************************************************/
-void draw_line(int x0, int y0, int x1, int y1)
+void draw_line(ColorBuffer& color_buffer, int x0, int y0, int x1, int y1,
+               uint32_t color)
 {
+    // Based on DDA
     int delta_x = x1 - x0;
     int delta_y = y1 - y0;
 
-    int side_length = abs(delta_x);
+    int side_length = abs(delta_x) >= abs(delta_y) ?
+                      abs(delta_x) :
+                      abs(delta_y);
 
+    // How much incerement x and y each step
     float x_inc = delta_x / (float)side_length;
     float y_inc = delta_y / (float)side_length;
+
+    float current_x = (float)x0;
+    float current_y = (float)y0;
+
+    for (int i = 0; i < side_length; ++i)
+    {
+        draw_pixel(color_buffer, (int)round(current_x),
+                   (int)round(current_y), color);
+        current_x += x_inc;
+        current_y += y_inc;
+    }
+}
+
+void draw_triangle(ColorBuffer& color_buffer,
+                   int x0, int y0,
+                   int x1, int y1,
+                   int x2, int y2,
+                   uint32_t color)
+{
+    draw_line(color_buffer, x0, y0, x1, y1, color);
+    draw_line(color_buffer, x1, y1, x2, y2, color);
+    draw_line(color_buffer, x2, y2, x0, y0, color);
 }

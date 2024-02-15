@@ -141,18 +141,16 @@ void render(SDL_API sdl, ColorBuffer& color_buffer)
     for (uint32_t i = 0; i < N_MESH_FACES; ++i)
     {
         triangle_t triangle = triangles[i];
-        for (int j = 0; j < 3; ++j)
-        {
-            draw_rect(
-                color_buffer,
-                triangle.points[j].x,
-                triangle.points[j].y,
-                3,
-                3,
-                0xFFFFFF00
-            );
-        }
-        
+        draw_triangle(
+            color_buffer,
+            (int)round(triangle.points[0].x),
+            (int)round(triangle.points[0].y),
+            (int)round(triangle.points[1].x),
+            (int)round(triangle.points[1].y),
+            (int)round(triangle.points[2].x),
+            (int)round(triangle.points[2].y),
+            0xFFFFFF00
+        );
     }
 
     // AA RR GG BB
@@ -192,14 +190,15 @@ int main(int argc, char* argv[])
     // Main Loop
     while (sdl.is_running)
     {
-        uint32_t start_frame_ticks = SDL_GetTicks();
+        uint32_t start_frame_ticks = (uint32_t)SDL_GetTicks();
         process_input(sdl, color_buffer);
         update(color_buffer.width, color_buffer.height);
         render(sdl, color_buffer);
-        uint32_t elapsed_frame_ticks = SDL_GetTicks() - start_frame_ticks;
+        uint32_t elapsed_frame_ticks = (uint32_t)SDL_GetTicks() - start_frame_ticks;
         if ((float)elapsed_frame_ticks <= FRAME_TARGET_TIME)
         {
-            SDL_Delay(FRAME_TARGET_TIME - elapsed_frame_ticks);
+            SDL_Delay((uint32_t)
+                (FRAME_TARGET_TIME - (float)elapsed_frame_ticks));
         }
     }
 
