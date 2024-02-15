@@ -165,3 +165,17 @@ void draw_rect(ColorBuffer& color_buffer, int x, int y, uint32_t width,
         }
     }
 }
+
+/*******************************************************************************
+ * Draw Line
+*******************************************************************************/
+void draw_line(int x0, int y0, int x1, int y1)
+{
+    int delta_x = x1 - x0;
+    int delta_y = y1 - y0;
+
+    int side_length = abs(delta_x);
+
+    float x_inc = delta_x / (float)side_length;
+    float y_inc = delta_y / (float)side_length;
+}

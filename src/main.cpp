@@ -4,6 +4,8 @@
 
 #include "display.h"
 #include "vector.h"
+#include "mesh.h"
+#include "triangle.h"
 
 /*******************************************************************************
  * Macros
@@ -15,11 +17,13 @@
 *******************************************************************************/
 const int FPS = 30;
 const float FRAME_TARGET_TIME = (1000.0f) / FPS;
+const float SCALE = 640.0f;
 
 /*******************************************************************************
  * Globals
 *******************************************************************************/
 static vec3_t camera_pos = { 0.0f, 0.0f, -5.0f };
+static triangle_t triangles[N_MESH_FACES];
 
 /*******************************************************************************
  * Process Input & Events
@@ -62,7 +66,7 @@ void process_input(SDL_API& sdl, ColorBuffer& color_buffer)
 /*******************************************************************************
  * Project 3D vector to a 2D point
 *******************************************************************************/
-vec2_t project(const vec3_t v, const float scale)
+vec2_t project(const vec3_t v)
 {
     // Perspective projection
     /*   E| \
@@ -78,8 +82,8 @@ vec2_t project(const vec3_t v, const float scale)
     // AB \ AD == BC \ DE
     // => Projected coordinate BC = AB*DE \ AD
     vec2_t projected = {
-        .x = scale * v.x / v.z,
-        .y = scale * v.y / v.z
+        .x = SCALE * v.x / v.z,
+        .y = SCALE * v.y / v.z
     };
     return projected;
 }
@@ -87,24 +91,42 @@ vec2_t project(const vec3_t v, const float scale)
 /*******************************************************************************
  * Update Logic
 *******************************************************************************/
-void update(const vec3_t* points, vec2_t* projected_points, uint32_t num_points)
+void update(uint32_t window_width, uint32_t window_height)
 {
     static vec3_t cube_rotation = {};
     cube_rotation.x += 0.01f;
     cube_rotation.y += 0.01f;
     cube_rotation.z += 0.01f;
-    for (uint32_t i = 0; i < num_points; ++i)
+
+    for (int i = 0; i < N_MESH_FACES; ++i)
     {
-        vec3_t point = points[i];
+        face_t mesh_face = mesh_faces[i];
+        vec3_t face_vertices[3] = {
+            mesh_vertices[mesh_face.a],
+            mesh_vertices[mesh_face.b],
+            mesh_vertices[mesh_face.c]
+        };
+        for (int j = 0; j < 3; ++j)
+        {
+            vec3_t transformed_vertex = face_vertices[j];
+            transformed_vertex = vec3_rotate_x(transformed_vertex,
+                cube_rotation.x);
+            transformed_vertex = vec3_rotate_y(transformed_vertex,
+                cube_rotation.y);
+            transformed_vertex = vec3_rotate_z(transformed_vertex,
+                cube_rotation.z);
 
-        vec3_t transformed_point = vec3_rotate_x(point, cube_rotation.x);
-        transformed_point = vec3_rotate_y(transformed_point, cube_rotation.y);
-        transformed_point = vec3_rotate_z(transformed_point, cube_rotation.z);
+            // Translate the points aways from the camera
+            transformed_vertex.z -= camera_pos.z;
 
-        // Move away from camera
-        transformed_point.z -= camera_pos.z;
+            vec2_t projected_point = project(transformed_vertex);
 
-        projected_points[i] = project(transformed_point, 640.0f);
+            // Scale and translate the points to the middle of the screen
+            projected_point.x += window_width / 2;
+            projected_point.y += window_height / 2;
+
+            triangles[i].points[j] = projected_point;   
+        }
     }
 }
 
@@ -112,22 +134,25 @@ void update(const vec3_t* points, vec2_t* projected_points, uint32_t num_points)
 /*******************************************************************************
  * Render Color Buffer
 *******************************************************************************/
-void render(SDL_API sdl, ColorBuffer& color_buffer, vec2_t* projected_points,
-            uint32_t num_points)
+void render(SDL_API sdl, ColorBuffer& color_buffer)
 {
     draw_grid(color_buffer, 20, 0xFFE4E6EB);
 
-    for (uint32_t i = 0; i < num_points; ++i)
+    for (uint32_t i = 0; i < N_MESH_FACES; ++i)
     {
-        vec2_t point = projected_points[i];
-        draw_rect(
-            color_buffer,
-            (int)(point.x + (color_buffer.width / 2)),
-            (int)(point.y + (color_buffer.height / 2)),
-            4,
-            4,
-            0xFFFFFF00
-        );
+        triangle_t triangle = triangles[i];
+        for (int j = 0; j < 3; ++j)
+        {
+            draw_rect(
+                color_buffer,
+                triangle.points[j].x,
+                triangle.points[j].y,
+                3,
+                3,
+                0xFFFFFF00
+            );
+        }
+        
     }
 
     // AA RR GG BB
@@ -164,27 +189,18 @@ int main(int argc, char* argv[])
     create_color_buffer(sdl, color_buffer);
     clear_color_buffer(color_buffer, 0xFF18191A);
 
-    const uint32_t NB_POINTS = 9 * 9 * 9;
-    vec3_t points[NB_POINTS];
-    uint32_t num_points = 0;
-    for (float z = -1.0f; z <= 1.0f; z += 0.25f)
-    {
-        for (float y = -1.0f; y <= 1.0f; y += 0.25f)
-        {
-            for (float x = -1.0f; x <= 1.0f; x += 0.25f)
-            {
-                points[num_points++] = {x, y, z};
-            }
-        }
-    }
-
     // Main Loop
-    vec2_t projected_points[NB_POINTS];
     while (sdl.is_running)
     {
+        uint32_t start_frame_ticks = SDL_GetTicks();
         process_input(sdl, color_buffer);
-        update(points, projected_points, NB_POINTS);
-        render(sdl, color_buffer, projected_points, NB_POINTS);
+        update(color_buffer.width, color_buffer.height);
+        render(sdl, color_buffer);
+        uint32_t elapsed_frame_ticks = SDL_GetTicks() - start_frame_ticks;
+        if ((float)elapsed_frame_ticks <= FRAME_TARGET_TIME)
+        {
+            SDL_Delay(FRAME_TARGET_TIME - elapsed_frame_ticks);
+        }
     }
 
     // Free resources
