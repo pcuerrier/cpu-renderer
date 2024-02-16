@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
 
 /*******************************************************************************
  * Initialize SDL Window & Renderer

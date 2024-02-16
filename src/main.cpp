@@ -7,6 +7,9 @@
 #include "mesh.h"
 #include "triangle.h"
 
+#include <vector>
+#include <cmath>
+
 /*******************************************************************************
  * Macros
 *******************************************************************************/
@@ -23,7 +26,9 @@ const float SCALE = 640.0f;
  * Globals
 *******************************************************************************/
 static vec3_t camera_pos = { 0.0f, 0.0f, -5.0f };
-static triangle_t triangles[N_MESH_FACES];
+static std::vector<triangle_t> triangles;
+
+static mesh_t mesh;
 
 /*******************************************************************************
  * Process Input & Events
@@ -93,28 +98,28 @@ vec2_t project(const vec3_t v)
 *******************************************************************************/
 void update(uint32_t window_width, uint32_t window_height)
 {
-    static vec3_t cube_rotation = {};
-    cube_rotation.x += 0.01f;
-    cube_rotation.y += 0.01f;
-    cube_rotation.z += 0.01f;
+    mesh.rotation.x += 0.01f;
+    mesh.rotation.y += 0.01f;
+    mesh.rotation.z += 0.01f;
 
-    for (int i = 0; i < N_MESH_FACES; ++i)
+    for (size_t i = 0; i < mesh.faces.size(); ++i)
     {
-        face_t mesh_face = mesh_faces[i];
+        face_t mesh_face = mesh.faces[i];
         vec3_t face_vertices[3] = {
-            mesh_vertices[mesh_face.a],
-            mesh_vertices[mesh_face.b],
-            mesh_vertices[mesh_face.c]
+            mesh.vertices[mesh_face.a],
+            mesh.vertices[mesh_face.b],
+            mesh.vertices[mesh_face.c]
         };
+        triangle_t projected_triangle = {};
         for (int j = 0; j < 3; ++j)
         {
             vec3_t transformed_vertex = face_vertices[j];
             transformed_vertex = vec3_rotate_x(transformed_vertex,
-                cube_rotation.x);
+                mesh.rotation.x);
             transformed_vertex = vec3_rotate_y(transformed_vertex,
-                cube_rotation.y);
+                mesh.rotation.y);
             transformed_vertex = vec3_rotate_z(transformed_vertex,
-                cube_rotation.z);
+                mesh.rotation.z);
 
             // Translate the points aways from the camera
             transformed_vertex.z -= camera_pos.z;
@@ -125,8 +130,9 @@ void update(uint32_t window_width, uint32_t window_height)
             projected_point.x += window_width / 2;
             projected_point.y += window_height / 2;
 
-            triangles[i].points[j] = projected_point;   
+            projected_triangle.points[j] = projected_point;   
         }
+        triangles.push_back(projected_triangle);
     }
 }
 
@@ -138,7 +144,7 @@ void render(SDL_API sdl, ColorBuffer& color_buffer)
 {
     draw_grid(color_buffer, 20, 0xFFE4E6EB);
 
-    for (uint32_t i = 0; i < N_MESH_FACES; ++i)
+    for (uint32_t i = 0; i < triangles.size(); ++i)
     {
         triangle_t triangle = triangles[i];
         draw_triangle(
@@ -152,6 +158,7 @@ void render(SDL_API sdl, ColorBuffer& color_buffer)
             0xFFFFFF00
         );
     }
+    triangles.clear();
 
     // AA RR GG BB
     SDL_UpdateTexture(
@@ -186,6 +193,34 @@ int main(int argc, char* argv[])
     ColorBuffer color_buffer = {};
     create_color_buffer(sdl, color_buffer);
     clear_color_buffer(color_buffer, 0xFF18191A);
+
+    mesh.vertices.push_back({ .x = -1, .y = -1, .z = -1 }); // 0
+    mesh.vertices.push_back({ .x = -1, .y =  1, .z = -1 }); // 1
+    mesh.vertices.push_back({ .x =  1, .y =  1, .z = -1 }); // 2
+    mesh.vertices.push_back({ .x =  1, .y = -1, .z = -1 }); // 3
+    mesh.vertices.push_back({ .x =  1, .y =  1, .z =  1 }); // 4
+    mesh.vertices.push_back({ .x =  1, .y = -1, .z =  1 }); // 5
+    mesh.vertices.push_back({ .x = -1, .y =  1, .z =  1 }); // 6
+    mesh.vertices.push_back({ .x = -1, .y = -1, .z =  1 }); // 7
+
+    // front
+    mesh.faces.push_back({ .a = 0, .b = 1, .c = 2 });
+    mesh.faces.push_back({ .a = 0, .b = 0, .c = 3 });
+    // right
+    mesh.faces.push_back({ .a = 3, .b = 2, .c = 4 });
+    mesh.faces.push_back({ .a = 3, .b = 4, .c = 5 });
+    // back
+    mesh.faces.push_back({ .a = 5, .b = 4, .c = 6 });
+    mesh.faces.push_back({ .a = 5, .b = 6, .c = 7 });
+    // left
+    mesh.faces.push_back({ .a = 7, .b = 6, .c = 1 });
+    mesh.faces.push_back({ .a = 7, .b = 1, .c = 0 });
+    // top
+    mesh.faces.push_back({ .a = 1, .b = 6, .c = 4 });
+    mesh.faces.push_back({ .a = 1, .b = 4, .c = 2 });
+    // bottom
+    mesh.faces.push_back({ .a = 5, .b = 7, .c = 0 });
+    mesh.faces.push_back({ .a = 5, .b = 0, .c = 3 });
 
     // Main Loop
     while (sdl.is_running)
