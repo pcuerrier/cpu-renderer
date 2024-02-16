@@ -4,9 +4,16 @@
 
 struct face_t
 {
-    int a = 0;
-    int b = 0;
-    int c = 0;
+    union
+    {
+        int data[3] = { 0, 0, 0 };
+        struct indices
+        {
+            int a = 0;
+            int b = 0;
+            int c = 0;
+        } indices;
+    };
 };
 
 struct triangle_t

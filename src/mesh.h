@@ -11,3 +11,4 @@ struct mesh_t
     vec3_t rotation;
 };
 
+bool create_mesh_from_obj(const char* filepath, mesh_t& out_mesh);

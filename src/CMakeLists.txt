@@ -15,7 +15,7 @@ message(CMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}")
 message(ROOT_DIR="${ROOT_DIR}")
 
 IF (WIN32)
-target_compile_options(${BINARY}_run PRIVATE -W4 -WX)
+target_compile_options(${BINARY}_run PRIVATE -W4 -WX -wd4201)
 ELSE()
 target_compile_options(${BINARY}_run PRIVATE -Wall -Wextra -Wpedantic -Werror)
 ENDIF()
