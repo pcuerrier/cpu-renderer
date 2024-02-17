@@ -201,7 +201,7 @@ int main(int argc, char* argv[])
     char cwd[PATH_MAX];
     getcwd(cwd, sizeof(cwd));
     fprintf(stdout, "CWD : %s\n", cwd);
-    create_mesh_from_obj("../../data/cube.obj", mesh);
+    create_mesh_from_obj("../../assets/f22.obj", mesh);
 
     // Main Loop
     while (sdl.is_running)
