@@ -17,7 +17,7 @@ message(ROOT_DIR="${ROOT_DIR}")
 IF (WIN32)
 target_compile_options(${BINARY}_run PRIVATE -W4 -WX -wd4201)
 ELSE()
-target_compile_options(${BINARY}_run PRIVATE -Wall -Wextra -Wpedantic -Werror)
+target_compile_options(${BINARY}_run PRIVATE -Wall -Wextra -Werror -fms-extensions)
 ENDIF()
 
 target_include_directories(${BINARY}_run PUBLIC ${CMAKE_BINARY_DIR}/../lib/SDL/include)

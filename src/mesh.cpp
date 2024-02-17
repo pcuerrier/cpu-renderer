@@ -76,10 +76,15 @@ static void parse_face(char* line, size_t len, mesh_t& out_mesh)
     char* ptr_end = nullptr;
     int idx = 0;
     face_t face = {};
+
     while (ptr_end < (line + len) && idx < 3)
     {
+        // Temporarily advance ptr until next space
+        while (ptr_start[0] != ' ') { ++ptr_start; }
+        ++ptr_start;
+
         int indice = strtol(ptr_start, &ptr_end, 10);
-        face.data[idx++] = indice;
+        face.data[idx++] = indice - 1;
         ptr_start = ptr_end;
     }
     out_mesh.faces.push_back(face);
@@ -93,25 +98,34 @@ static void parse_vertex_index(char* line, size_t len, mesh_t& out_mesh)
     vec3_t vertex = {};
     while (ptr_end < (line + len) && idx < 3)
     {
+        // Temporarily advance ptr until next space
+        while (ptr_start[0] != ' ') { ++ptr_start; }
+        ++ptr_start;
+
         int whole = strtol(ptr_start, &ptr_end, 10);
-        int faction_int = ptr_end[0] == '.' ? strtol(ptr_end, &ptr_end, 10) : 0;
-        float faction = 0.0f;
-        while (faction_int)
+        float fraction = ptr_end[0] == '.' ? (float)strtol(ptr_end, &ptr_end, 10) : 0.0f;
+        while (fraction > 1.0f)
         {
-            faction += faction_int % 10;
+            fraction /= 10;
         }
-        vertex.data[idx++] = (float)whole + 0;
+        vertex.data[idx++] = (float)whole + fraction;
         ptr_start = ptr_end;
     }
     out_mesh.vertices.push_back(vertex);
 }
 
+// https://en.wikipedia.org/wiki/Wavefront_.obj_file#References
 bool create_mesh_from_obj(const char* filepath, mesh_t& out_mesh)
 {
     bool result = false;
 
+    // TODO: Check if .obj file else error
+#ifdef WIN32
     FILE* file_ptr = nullptr;
     fopen_s(&file_ptr, filepath, "r");
+#else
+    FILE* file_ptr = fopen(filepath, "r");
+#endif
     if (!file_ptr)
     {
         // TODO: Log error

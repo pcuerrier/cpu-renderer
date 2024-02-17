@@ -16,7 +16,7 @@ union vec3_t
         float z;
     };
     float data[3];
-} vec3;
+};
 
 vec3_t vec3_rotate_x(const vec3_t v, float angle);
 vec3_t vec3_rotate_y(const vec3_t v, float angle);

@@ -2,17 +2,14 @@
 
 #include "vector.h"
 
-struct face_t
+union face_t
 {
-    union
+    int data[3];
+    struct
     {
-        int data[3] = { 0, 0, 0 };
-        struct indices
-        {
-            int a = 0;
-            int b = 0;
-            int c = 0;
-        } indices;
+        int a;
+        int b;
+        int c;
     };
 };
 

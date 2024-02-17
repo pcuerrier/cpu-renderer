@@ -10,6 +10,10 @@
 #include <vector>
 #include <cmath>
 
+#include <unistd.h>
+#include <stdio.h>
+#include <limits.h>
+
 /*******************************************************************************
  * Macros
 *******************************************************************************/
@@ -106,9 +110,9 @@ void update(uint32_t window_width, uint32_t window_height)
     {
         face_t mesh_face = mesh.faces[i];
         vec3_t face_vertices[3] = {
-            mesh.vertices[mesh_face.indices.a],
-            mesh.vertices[mesh_face.indices.b],
-            mesh.vertices[mesh_face.indices.c]
+            mesh.vertices[mesh_face.a],
+            mesh.vertices[mesh_face.b],
+            mesh.vertices[mesh_face.c]
         };
         triangle_t projected_triangle = {};
         for (int j = 0; j < 3; ++j)
@@ -193,33 +197,11 @@ int main(int argc, char* argv[])
     create_color_buffer(sdl, color_buffer);
     clear_color_buffer(color_buffer, 0xFF18191A);
 
-    mesh.vertices.push_back({ .x = -1, .y = -1, .z = -1 }); // 0
-    mesh.vertices.push_back({ .x = -1, .y =  1, .z = -1 }); // 1
-    mesh.vertices.push_back({ .x =  1, .y =  1, .z = -1 }); // 2
-    mesh.vertices.push_back({ .x =  1, .y = -1, .z = -1 }); // 3
-    mesh.vertices.push_back({ .x =  1, .y =  1, .z =  1 }); // 4
-    mesh.vertices.push_back({ .x =  1, .y = -1, .z =  1 }); // 5
-    mesh.vertices.push_back({ .x = -1, .y =  1, .z =  1 }); // 6
-    mesh.vertices.push_back({ .x = -1, .y = -1, .z =  1 }); // 7
-
-    // front
-    mesh.faces.push_back({ 0, 1, 2 });
-    mesh.faces.push_back({ 0, 0, 3 });
-    // right
-    mesh.faces.push_back({ 3, 2, 4 });
-    mesh.faces.push_back({ 3, 4, 5 });
-    // back
-    mesh.faces.push_back({ 5, 4, 6 });
-    mesh.faces.push_back({ 5, 6, 7 });
-    // left
-    mesh.faces.push_back({ 7, 6, 1 });
-    mesh.faces.push_back({ 7, 1, 0 });
-    // top
-    mesh.faces.push_back({ 1, 6, 4 });
-    mesh.faces.push_back({ 1, 4, 2 });
-    // bottom
-    mesh.faces.push_back({ 5, 7, 0 });
-    mesh.faces.push_back({ 5, 0, 3 });
+    //
+    char cwd[PATH_MAX];
+    getcwd(cwd, sizeof(cwd));
+    fprintf(stdout, "CWD : %s\n", cwd);
+    create_mesh_from_obj("../../data/cube.obj", mesh);
 
     // Main Loop
     while (sdl.is_running)
