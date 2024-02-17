@@ -10,7 +10,6 @@
 #include <vector>
 #include <cmath>
 
-#include <unistd.h>
 #include <stdio.h>
 #include <limits.h>
 
@@ -91,8 +90,8 @@ vec2_t project(const vec3_t v)
     // AB \ AD == BC \ DE
     // => Projected coordinate BC = AB*DE \ AD
     vec2_t projected = {
-        .x = SCALE * v.x / v.z,
-        .y = SCALE * v.y / v.z
+        SCALE * v.x / v.z,
+        SCALE * v.y / v.z
     };
     return projected;
 }
@@ -102,33 +101,50 @@ vec2_t project(const vec3_t v)
 *******************************************************************************/
 void update(uint32_t window_width, uint32_t window_height)
 {
-    mesh.rotation.x += 0.01f;
-    mesh.rotation.y += 0.01f;
-    mesh.rotation.z += 0.01f;
+    mesh.rotation.x += 0.02f;
+    mesh.rotation.y += 0.00f;
+    mesh.rotation.z += 0.00f;
 
     for (size_t i = 0; i < mesh.faces.size(); ++i)
     {
         face_t mesh_face = mesh.faces[i];
         vec3_t face_vertices[3] = {
-            mesh.vertices[mesh_face.a],
-            mesh.vertices[mesh_face.b],
-            mesh.vertices[mesh_face.c]
+            mesh.vertices[mesh_face.a - 1],
+            mesh.vertices[mesh_face.b - 1],
+            mesh.vertices[mesh_face.c - 1]
         };
-        triangle_t projected_triangle = {};
+
+        vec3_t transformed_vertices[3];
         for (int j = 0; j < 3; ++j)
         {
-            vec3_t transformed_vertex = face_vertices[j];
-            transformed_vertex = vec3_rotate_x(transformed_vertex,
-                mesh.rotation.x);
-            transformed_vertex = vec3_rotate_y(transformed_vertex,
-                mesh.rotation.y);
-            transformed_vertex = vec3_rotate_z(transformed_vertex,
-                mesh.rotation.z);
+            vec3_t& transformed_vertex = face_vertices[j];
+            transformed_vertex = transformed_vertex.rotate_x(mesh.rotation.x);
+            transformed_vertex = transformed_vertex.rotate_y(mesh.rotation.y);
+            transformed_vertex = transformed_vertex.rotate_z(mesh.rotation.z);
 
             // Translate the points aways from the camera
             transformed_vertex.z -= camera_pos.z;
+            transformed_vertices[j] = transformed_vertex;
+        }
 
-            vec2_t projected_point = project(transformed_vertex);
+        // Back-face culling
+        vec3_t& vertex_a = transformed_vertices[0]; /*   A   */
+        vec3_t& vertex_b = transformed_vertices[1]; /*  / \  */
+        vec3_t& vertex_c = transformed_vertices[2]; /* C---B */
+
+        vec3_t vector_ab = vertex_b - vertex_a;
+        vec3_t vector_ac = vertex_c - vertex_a;
+        vec3_t normal = vector_ab.cross_product(vector_ac);
+        normal.normalize();
+        vec3_t camera_ray = camera_pos - vertex_a;
+
+        float dot_normal_camera = normal.dot_product(camera_ray);
+        if (dot_normal_camera < 0) { continue; }
+
+        triangle_t projected_triangle = {};
+        for (int j = 0; j < 3; ++j)
+        {
+            vec2_t projected_point = project(transformed_vertices[j]);
 
             // Scale and translate the points to the middle of the screen
             projected_point.x += window_width / 2;
@@ -147,6 +163,20 @@ void render(SDL_API sdl, ColorBuffer& color_buffer)
 {
     draw_grid(color_buffer, 20, 0xFFE4E6EB);
 
+    /*uint32_t colors[] = {
+        0xFFFF0000, //red
+        0xFFFF8000, //orange
+        0xFFFFFF00, //yellow
+        0xFF80FF00, //chartreuse
+        0xFF00FF00, //green
+        0xFF00FF80, //spring green
+        0xFF00FFFF, //cyan
+        0xFF0080FF, //dodger blue
+        0xFF0000FF, //blue
+        0xFF8000FF, //purple
+        0xFFFF00FF, //violet
+        0xFFFF0080  //magenta
+    };*/
     for (uint32_t i = 0; i < triangles.size(); ++i)
     {
         triangle_t triangle = triangles[i];
@@ -158,6 +188,7 @@ void render(SDL_API sdl, ColorBuffer& color_buffer)
             (int)round(triangle.points[1].y),
             (int)round(triangle.points[2].x),
             (int)round(triangle.points[2].y),
+            //colors[i]
             0xFFFFFF00
         );
     }
@@ -198,10 +229,14 @@ int main(int argc, char* argv[])
     clear_color_buffer(color_buffer, 0xFF18191A);
 
     //
-    char cwd[PATH_MAX];
-    getcwd(cwd, sizeof(cwd));
-    fprintf(stdout, "CWD : %s\n", cwd);
+    //char cwd[PATH_MAX];
+    //getcwd(cwd, sizeof(cwd));
+    //fprintf(stdout, "CWD : %s\n", cwd);
+#ifdef WIN32
+    create_mesh_from_obj("../../../assets/f22.obj", mesh);
+#else
     create_mesh_from_obj("../../assets/f22.obj", mesh);
+#endif
 
     // Main Loop
     while (sdl.is_running)

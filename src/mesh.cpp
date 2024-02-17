@@ -35,16 +35,27 @@ static void parse_face(char* line, mesh_t& out_mesh)
     {
         case 0:
         {
+#ifdef WIN32
+            sscanf_s(line, "f %d %d %d", &face.a, &face.b, &face.c);
+#else
             sscanf(line, "f %d %d %d", &face.a, &face.b, &face.c);
+#endif
         } break;
 
         case 1: // Texture coords
         {
             face_t texCoords = {};
+#ifdef WIN32
+            sscanf_s(line, "f %d/%d %d/%d %d/%d",
+                &face.a, &texCoords.a,
+                &face.b, &texCoords.b,
+                &face.c, &texCoords.c);
+#else
             sscanf(line, "f %d/%d %d/%d %d/%d",
                 &face.a, &texCoords.a,
                 &face.b, &texCoords.b,
                 &face.c, &texCoords.c);
+#endif
         } break;
 
         // TODO: Probably broken for v//vn
@@ -52,10 +63,17 @@ static void parse_face(char* line, mesh_t& out_mesh)
         {
             face_t texCoords = {};
             face_t normals = {};
+#ifdef WIN32
+            sscanf_s(line, "f %d/%d/%d %d/%d/%d %d/%d/%d",
+                &face.a, &texCoords.a, &normals.a,
+                &face.b, &texCoords.b, &normals.b,
+                &face.c, &texCoords.c, &normals.c);
+#else
             sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d",
                 &face.a, &texCoords.a, &normals.a,
                 &face.b, &texCoords.b, &normals.b,
-                &face.c, &texCoords.c, &normals.c);   
+                &face.c, &texCoords.c, &normals.c);
+#endif
         } break;
     }
     out_mesh.faces.push_back(face);
@@ -64,7 +82,11 @@ static void parse_face(char* line, mesh_t& out_mesh)
 static void parse_vertex_index(char* line, mesh_t& out_mesh)
 {
     vec3_t vertex = {};
+#ifdef WIN32
+    sscanf_s(line, "v %f %f %f", &vertex.x, &vertex.y, &vertex.z);
+#else
     sscanf(line, "v %f %f %f", &vertex.x, &vertex.y, &vertex.z);
+#endif
     out_mesh.vertices.push_back(vertex);
 }
 
