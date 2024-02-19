@@ -49,3 +49,8 @@ void draw_triangle(ColorBuffer& color_buffer,
                    int x1, int y1,
                    int x2, int y2,
                    uint32_t color);
+void draw_filled_triangle(ColorBuffer& color_buffer,
+                          int x0, int y0,
+                          int x1, int y1,
+                          int x2, int y2,
+                          uint32_t color);

@@ -163,7 +163,7 @@ void render(SDL_API sdl, ColorBuffer& color_buffer)
 {
     draw_grid(color_buffer, 20, 0xFFE4E6EB);
 
-    /*uint32_t colors[] = {
+    uint32_t colors[] = {
         0xFFFF0000, //red
         0xFFFF8000, //orange
         0xFFFFFF00, //yellow
@@ -176,11 +176,11 @@ void render(SDL_API sdl, ColorBuffer& color_buffer)
         0xFF8000FF, //purple
         0xFFFF00FF, //violet
         0xFFFF0080  //magenta
-    };*/
+    };
     for (uint32_t i = 0; i < triangles.size(); ++i)
     {
         triangle_t triangle = triangles[i];
-        draw_triangle(
+        draw_filled_triangle(
             color_buffer,
             (int)round(triangle.points[0].x),
             (int)round(triangle.points[0].y),
@@ -188,8 +188,8 @@ void render(SDL_API sdl, ColorBuffer& color_buffer)
             (int)round(triangle.points[1].y),
             (int)round(triangle.points[2].x),
             (int)round(triangle.points[2].y),
-            //colors[i]
-            0xFFFFFF00
+            colors[i]
+            //0xFFFFFF00
         );
     }
     triangles.clear();
@@ -235,7 +235,7 @@ int main(int argc, char* argv[])
 #ifdef WIN32
     create_mesh_from_obj("../../../assets/f22.obj", mesh);
 #else
-    create_mesh_from_obj("../../assets/f22.obj", mesh);
+    create_mesh_from_obj("../../assets/cube.obj", mesh);
 #endif
 
     // Main Loop
