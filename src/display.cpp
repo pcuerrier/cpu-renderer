@@ -265,42 +265,46 @@ void draw_filled_triangle(ColorBuffer& color_buffer,
 
     int my = y1;
     int mx = x0 + (float)(x2 - x0) * (float)(y1 - y0) / (float)(y2 - y0);
-
     // Draw Flat-bottom triangle
-    
-    // Find the 2 slopes
-    float inv_slope1 = (float)(x1 - x0) / (y1 - y0);
-    float inv_slope2 = (float)(mx - x0) / (my - y0);
-
-    float x_start = x0;
-    float x_end = x0;
-
-    for (int y = y0; y <= my; ++y)
+    if (y1 != y0)
     {
-        for (int x = (int)round(x_start); x <= (int)round(x_end); ++x)
+        // Find the 2 slopes
+        float inv_slope1 = (float)(x1 - x0) / (y1 - y0);
+        float inv_slope2 = (float)(mx - x0) / (my - y0);
+
+        float x_start = x0;
+        float x_end = x0;
+
+        for (int y = y0; y <= my; ++y)
         {
-            draw_pixel(color_buffer, x, y, color);
+            for (int x = (int)round(x_start); x <= (int)round(x_end); ++x)
+            {
+                draw_pixel(color_buffer, x, y, color);
+            }
+            x_start += inv_slope1;
+            x_end += inv_slope2;
         }
-        x_start += inv_slope1;
-        x_end += inv_slope2;
     }
 
+
     // Draw Flat-top triangle
-
-    // Find the 2 slopes
-    inv_slope1 = (float)(x2 - x1) / (y2 - y1);
-    inv_slope2 = (float)(x2 - mx) / (y2 - my);
-
-    x_start = x2;
-    x_end = x2;
-
-    for (int y = y2; y >= my; --y)
+    if (y1 != y2)
     {
-        for (int x = (int)round(x_start); x <= (int)round(x_end); ++x)
+        // Find the 2 slopes
+        float inv_slope1 = (float)(x2 - x1) / (y2 - y1);
+        float inv_slope2 = (float)(x2 - mx) / (y2 - my);
+
+        float x_start = x2;
+        float x_end = x2;
+
+        for (int y = y2; y >= my; --y)
         {
-            draw_pixel(color_buffer, x, y, color);
+            for (int x = (int)round(x_start); x <= (int)round(x_end); ++x)
+            {
+                draw_pixel(color_buffer, x, y, color);
+            }
+            x_start -= inv_slope2;
+            x_end -= inv_slope1;
         }
-        x_start -= inv_slope1;
-        x_end -= inv_slope2;
     }
 }

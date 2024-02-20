@@ -101,9 +101,9 @@ vec2_t project(const vec3_t v)
 *******************************************************************************/
 void update(uint32_t window_width, uint32_t window_height)
 {
-    mesh.rotation.x += 0.02f;
+    mesh.rotation.x += 0.00f;
     mesh.rotation.y += 0.00f;
-    mesh.rotation.z += 0.00f;
+    mesh.rotation.z += 0.02f;
 
     for (size_t i = 0; i < mesh.faces.size(); ++i)
     {
