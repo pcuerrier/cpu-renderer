@@ -3,6 +3,7 @@
 #include <cstring>
 static void parse_face(char* line, mesh_t& out_mesh)
 {
+    
     // Possible Read
     // - Vertex indices only
     //      f v1 v2 v3 ...

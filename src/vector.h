@@ -1,5 +1,8 @@
 #pragma once
 
+struct vec2_t;
+struct vec3_t;
+struct vec4_t;
 
 struct vec2_t
 {
@@ -50,4 +53,23 @@ struct vec3_t
     vec3_t rotate_x(const float angle) const;
     vec3_t rotate_y(const float angle) const;
     vec3_t rotate_z(const float angle) const;
+
+    vec4_t to_vec4() const;
+};
+
+struct vec4_t
+{
+    union
+    {
+        struct
+        {
+            float x;
+            float y;
+            float z;
+            float w;
+        };
+        float data[4];
+    };
+
+    vec3_t to_vec3() const;
 };

@@ -4,12 +4,22 @@
 /*******************************************************************************
  * Structures
 *******************************************************************************/
+enum class RENDER_MODE
+{
+    WIREFRAME_DOTS,
+    WIREFRAME_LINES,
+    FILLED_TRIANGLES,
+    FILLED_TRIANGLES_AND_WIREFRAME
+};
+
 struct SDL_API
 {
-    SDL_Window*   window     = nullptr;
-    SDL_Renderer* renderer   = nullptr;
-    bool          is_running = false;
-    bool          fullscreen = true;
+    SDL_Window*   window      = nullptr;
+    SDL_Renderer* renderer    = nullptr;
+    bool          is_running  = false;
+    bool          fullscreen  = true;
+    bool          culling     = true;
+    RENDER_MODE   render_mode = RENDER_MODE::FILLED_TRIANGLES_AND_WIREFRAME;
 };
 
 struct ColorBuffer

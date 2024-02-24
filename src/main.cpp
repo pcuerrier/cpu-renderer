@@ -4,6 +4,7 @@
 
 #include "display.h"
 #include "vector.h"
+#include "matrix.h"
 #include "mesh.h"
 #include "triangle.h"
 
@@ -29,6 +30,7 @@ const float SCALE = 640.0f;
  * Globals
 *******************************************************************************/
 static vec3_t camera_pos = { 0.0f, 0.0f, -5.0f };
+static mat4_t projection_matrix = mat4_identity();
 static std::vector<triangle_t> triangles;
 
 static mesh_t mesh;
@@ -59,6 +61,30 @@ void process_input(SDL_API& sdl, ColorBuffer& color_buffer)
                     sdl.fullscreen = !sdl.fullscreen;
                     SDL_SetWindowFullscreen(sdl.window, sdl.fullscreen);
                 }
+                else if (event.key.keysym.sym == SDLK_c)
+                {
+                    sdl.culling = true;
+                }
+                else if (event.key.keysym.sym == SDLK_d)
+                {
+                    sdl.culling = false;
+                }
+                else if (event.key.keysym.sym == SDLK_1)
+                {
+                    sdl.render_mode = RENDER_MODE::WIREFRAME_DOTS;
+                }
+                else if (event.key.keysym.sym == SDLK_2)
+                {
+                    sdl.render_mode = RENDER_MODE::WIREFRAME_LINES;
+                }
+                else if (event.key.keysym.sym == SDLK_3)
+                {
+                    sdl.render_mode = RENDER_MODE::FILLED_TRIANGLES;
+                }
+                else if (event.key.keysym.sym == SDLK_4)
+                {
+                    sdl.render_mode = RENDER_MODE::FILLED_TRIANGLES_AND_WIREFRAME;
+                }
             } break;
 
             case SDL_EVENT_WINDOW_RESIZED:
@@ -66,6 +92,13 @@ void process_input(SDL_API& sdl, ColorBuffer& color_buffer)
                 int width = event.window.data1;
                 int height = event.window.data2;
                 resize_color_buffer(sdl, color_buffer, width, height);
+
+                // Remake perspective matrix
+                float fov = M_PI / 3.0f; // 60 deg
+                float aspect = (float)color_buffer.height / color_buffer.width;
+                float znear = 0.1f;
+                float zfar = 100.0f;
+                projection_matrix = mat4_make_perspective(fov, aspect, znear, zfar);
             } break;
         }
     }
@@ -74,8 +107,8 @@ void process_input(SDL_API& sdl, ColorBuffer& color_buffer)
 /*******************************************************************************
  * Project 3D vector to a 2D point
 *******************************************************************************/
-vec2_t project(const vec3_t v)
-{
+/*vec2_t project(const vec3_t v)
+{*/
     // Perspective projection
     /*   E| \
           |  \
@@ -89,81 +122,125 @@ vec2_t project(const vec3_t v)
     // AB = 1 (arbitrarily)
     // AB \ AD == BC \ DE
     // => Projected coordinate BC = AB*DE \ AD
-    vec2_t projected = {
+/*    vec2_t projected = {
         SCALE * v.x / v.z,
         SCALE * v.y / v.z
     };
     return projected;
-}
+}*/
 
 /*******************************************************************************
  * Update Logic
 *******************************************************************************/
-void update(uint32_t window_width, uint32_t window_height)
+void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
 {
-    mesh.rotation.x += 0.00f;
-    mesh.rotation.y += 0.00f;
-    mesh.rotation.z += 0.02f;
+    mesh.rotation.x += 0.01f;
+    //mesh.rotation.y += 0.01f;
+    //mesh.rotation.z += 0.01f;
 
+    //mesh.scale.x += 0.002f;
+    //mesh.scale.y += 0.001f;
+    //mesh.translation.x += 0.01f;
+
+    // Translate the points aways from the camera
+    mesh.translation.z = -camera_pos.z;
+
+    mat4_t scale_matrix = mat4_make_scale(mesh.scale.x, mesh.scale.y, mesh.scale.z);
+    mat4_t rotation_x_matrix = mat4_make_rotation_x(mesh.rotation.x);
+    mat4_t rotation_y_matrix = mat4_make_rotation_y(mesh.rotation.y);
+    mat4_t rotation_z_matrix = mat4_make_rotation_z(mesh.rotation.z);
+    mat4_t translation_matrix = mat4_make_translation(mesh.translation.x, mesh.translation.y, mesh.translation.z);
+    mat4_t world_matrix = mat4_identity();
+    world_matrix = scale_matrix.mul_mat4(world_matrix);
+    world_matrix = rotation_x_matrix.mul_mat4(world_matrix);
+    world_matrix = rotation_y_matrix.mul_mat4(world_matrix);
+    world_matrix = rotation_z_matrix.mul_mat4(world_matrix);
+    world_matrix = translation_matrix.mul_mat4(world_matrix);
     for (size_t i = 0; i < mesh.faces.size(); ++i)
     {
         face_t mesh_face = mesh.faces[i];
-        vec3_t face_vertices[3] = {
+        const vec3_t face_vertices[3] = {
             mesh.vertices[mesh_face.a - 1],
             mesh.vertices[mesh_face.b - 1],
             mesh.vertices[mesh_face.c - 1]
         };
 
-        vec3_t transformed_vertices[3];
+        vec4_t transformed_vertices[3];
         for (int j = 0; j < 3; ++j)
         {
-            vec3_t& transformed_vertex = face_vertices[j];
-            transformed_vertex = transformed_vertex.rotate_x(mesh.rotation.x);
-            transformed_vertex = transformed_vertex.rotate_y(mesh.rotation.y);
-            transformed_vertex = transformed_vertex.rotate_z(mesh.rotation.z);
+            vec4_t transformed_vertex = face_vertices[j].to_vec4();
+            //transformed_vertex = transformed_vertex.rotate_x(mesh.rotation.x);
+            //transformed_vertex = transformed_vertex.rotate_y(mesh.rotation.y);
+            //transformed_vertex = transformed_vertex.rotate_z(mesh.rotation.z);
 
-            // Translate the points aways from the camera
+            transformed_vertex = world_matrix.mul_vec4(transformed_vertex);
             transformed_vertex.z -= camera_pos.z;
             transformed_vertices[j] = transformed_vertex;
         }
 
         // Back-face culling
-        vec3_t& vertex_a = transformed_vertices[0]; /*   A   */
-        vec3_t& vertex_b = transformed_vertices[1]; /*  / \  */
-        vec3_t& vertex_c = transformed_vertices[2]; /* C---B */
+        if (sdl.culling)
+        {
+            vec3_t vertex_a = transformed_vertices[0].to_vec3(); /*   A   */
+            vec3_t vertex_b = transformed_vertices[1].to_vec3(); /*  / \  */
+            vec3_t vertex_c = transformed_vertices[2].to_vec3(); /* C---B */
 
-        vec3_t vector_ab = vertex_b - vertex_a;
-        vec3_t vector_ac = vertex_c - vertex_a;
-        vec3_t normal = vector_ab.cross_product(vector_ac);
-        normal.normalize();
-        vec3_t camera_ray = camera_pos - vertex_a;
+            vec3_t vector_ab = vertex_b - vertex_a;
+            vec3_t vector_ac = vertex_c - vertex_a;
+            vec3_t normal = vector_ab.cross_product(vector_ac);
+            normal.normalize();
+            vec3_t camera_ray = camera_pos - vertex_a;
 
-        float dot_normal_camera = normal.dot_product(camera_ray);
-        if (dot_normal_camera < 0) { continue; }
+            float dot_normal_camera = normal.dot_product(camera_ray);
+            if (dot_normal_camera <= 0) { continue; }
+        }
 
         triangle_t projected_triangle = {};
+        float cumulative_z = 0.0f;
         for (int j = 0; j < 3; ++j)
         {
-            vec2_t projected_point = project(transformed_vertices[j]);
+            //vec2_t projected_point = project(transformed_vertices[j]);
+            vec4_t projected_point = mat4_mul_vec4_project(projection_matrix, transformed_vertices[j]);
 
-            // Scale and translate the points to the middle of the screen
-            projected_point.x += window_width / 2;
-            projected_point.y += window_height / 2;
+            // Scale into the view
+            projected_point.x *= window_width / 2.0f;
+            projected_point.y *= window_height / 2.0f;
 
-            projected_triangle.points[j] = projected_point;   
+            // Translate the points to the middle of the screen
+            projected_point.x += window_width / 2.0f;
+            projected_point.y += window_height / 2.0f;
+
+            projected_triangle.points[j].x = projected_point.x;
+            projected_triangle.points[j].y = projected_point.y;
+            cumulative_z += projected_point.z;
         }
+        projected_triangle.avg_depth = cumulative_z / 3.0f;
         triangles.push_back(projected_triangle);
+    }
+
+    // TODO: Sort triangles based on the avg_depth
+    for (size_t i = 0; i < triangles.size(); ++i)
+    {
+        for (size_t j = i + 1; j < triangles.size(); ++j)
+        {
+            if (triangles[i].avg_depth < triangles[j].avg_depth)
+            {
+                triangle_t temp = triangles[i];
+                triangles[i] = triangles[j];
+                triangles[j] = temp;
+            }
+        }
     }
 }
 
 /*******************************************************************************
  * Render Color Buffer
 *******************************************************************************/
-void render(SDL_API sdl, ColorBuffer& color_buffer)
+void render(const SDL_API& sdl, ColorBuffer& color_buffer)
 {
     draw_grid(color_buffer, 20, 0xFFE4E6EB);
 
-    uint32_t colors[] = {
+    /*uint32_t colors[] = {
         0xFFFF0000, //red
         0xFFFF8000, //orange
         0xFFFFFF00, //yellow
@@ -176,21 +253,45 @@ void render(SDL_API sdl, ColorBuffer& color_buffer)
         0xFF8000FF, //purple
         0xFFFF00FF, //violet
         0xFFFF0080  //magenta
-    };
+    };*/
+
     for (uint32_t i = 0; i < triangles.size(); ++i)
     {
         triangle_t triangle = triangles[i];
-        draw_filled_triangle(
-            color_buffer,
-            (int)round(triangle.points[0].x),
-            (int)round(triangle.points[0].y),
-            (int)round(triangle.points[1].x),
-            (int)round(triangle.points[1].y),
-            (int)round(triangle.points[2].x),
-            (int)round(triangle.points[2].y),
-            colors[i]
-            //0xFFFFFF00
-        );
+        if (sdl.render_mode != RENDER_MODE::FILLED_TRIANGLES)
+        {
+            // Draw wireframe
+            draw_line(color_buffer, triangle.points[0].x, triangle.points[0].y,
+                      triangle.points[1].x, triangle.points[1].y, 0xFF0000FF);
+            draw_line(color_buffer, triangle.points[1].x, triangle.points[1].y,
+                      triangle.points[2].x, triangle.points[2].y, 0xFF0000FF);
+            draw_line(color_buffer, triangle.points[2].x, triangle.points[2].y,
+                      triangle.points[0].x, triangle.points[0].y, 0xFF0000FF);
+        }
+        if (sdl.render_mode == RENDER_MODE::WIREFRAME_DOTS)
+        {
+            // Draw vertex dots
+            draw_rect(color_buffer, triangle.points[0].x, triangle.points[0].y,
+                      3, 3, 0xFFFF0000);
+            draw_rect(color_buffer, triangle.points[1].x, triangle.points[1].y,
+                      3, 3, 0xFFFF0000);
+            draw_rect(color_buffer, triangle.points[2].x, triangle.points[2].y,
+                      3, 3, 0xFFFF0000);
+        }
+        else if (sdl.render_mode == RENDER_MODE::FILLED_TRIANGLES ||
+                 sdl.render_mode == RENDER_MODE::FILLED_TRIANGLES_AND_WIREFRAME)
+        {
+            draw_filled_triangle(
+                color_buffer,
+                (int)round(triangle.points[0].x),
+                (int)round(triangle.points[0].y),
+                (int)round(triangle.points[1].x),
+                (int)round(triangle.points[1].y),
+                (int)round(triangle.points[2].x),
+                (int)round(triangle.points[2].y),
+                0xFFFFFF00
+            );
+        }
     }
     triangles.clear();
 
@@ -228,6 +329,12 @@ int main(int argc, char* argv[])
     create_color_buffer(sdl, color_buffer);
     clear_color_buffer(color_buffer, 0xFF18191A);
 
+    float fov = M_PI / 3.0f; // 60 deg
+    float aspect = (float)color_buffer.height / color_buffer.width;
+    float znear = 0.1f;
+    float zfar = 100.0f;
+    projection_matrix = mat4_make_perspective(fov, aspect, znear, zfar);
+
     //
     //char cwd[PATH_MAX];
     //getcwd(cwd, sizeof(cwd));
@@ -243,7 +350,7 @@ int main(int argc, char* argv[])
     {
         uint32_t start_frame_ticks = (uint32_t)SDL_GetTicks();
         process_input(sdl, color_buffer);
-        update(color_buffer.width, color_buffer.height);
+        update(sdl, color_buffer.width, color_buffer.height);
         render(sdl, color_buffer);
         uint32_t elapsed_frame_ticks = (uint32_t)SDL_GetTicks() - start_frame_ticks;
         if ((float)elapsed_frame_ticks <= FRAME_TARGET_TIME)

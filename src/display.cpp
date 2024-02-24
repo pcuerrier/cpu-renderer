@@ -217,6 +217,72 @@ void int_swap(int& a, int& b)
 }
 
 /*******************************************************************************
+** Draw a filled a triangle with a flat bottom
+********************************************************************************
+**
+**        (x0,y0)
+**          / \
+**         /   \
+**        /     \
+**       /       \
+**      /         \
+**  (x1,y1)------(x2,y2)
+**
+*******************************************************************************/
+void fill_flat_bottom_triangle(ColorBuffer& color_buffer, int x0, int y0,
+                               int x1, int y1, int x2, int y2, uint32_t color)
+{
+    // Find the two slopes (two triangle legs)
+    float inv_slope_1 = (float)(x1 - x0) / (y1 - y0);
+    float inv_slope_2 = (float)(x2 - x0) / (y2 - y0);
+
+    // Start x_start and x_end from the top vertex (x0,y0)
+    float x_start = x0;
+    float x_end = x0;
+
+    // Loop all the scanlines from top to bottom
+    for (int y = y0; y <= y2; y++)
+    {
+        draw_line(color_buffer, x_start, y, x_end, y, color);
+        x_start += inv_slope_1;
+        x_end += inv_slope_2;
+    }
+}
+
+/*******************************************************************************
+** Draw a filled a triangle with a flat top
+********************************************************************************
+**
+**  (x0,y0)------(x1,y1)
+**      \         /
+**       \       /
+**        \     /
+**         \   /
+**          \ /
+**        (x2,y2)
+**
+*******************************************************************************/
+void fill_flat_top_triangle(ColorBuffer& color_buffer, int x0, int y0,
+                            int x1, int y1, int x2, int y2, uint32_t color)
+{
+    // Find the two slopes (two triangle legs)
+    float inv_slope_1 = (float)(x2 - x0) / (y2 - y0);
+    float inv_slope_2 = (float)(x2 - x1) / (y2 - y1);
+
+    // Start x_start and x_end from the bottom vertex (x2,y2)
+    float x_start = x2;
+    float x_end = x2;
+
+    // Loop all the scanlines from bottom to top
+    for (int y = y2; y >= y0; y--)
+    {
+        draw_line(color_buffer, x_start, y, x_end, y, color);
+        x_start -= inv_slope_1;
+        x_end -= inv_slope_2;
+    }
+}
+
+/*******************************************************************************
 ** Draw a filled triangle with the flat-top/flat-bottom method
 ** We split the original triangle in two, half flat-bottom and half flat-top
 ********************************************************************************
@@ -263,48 +329,62 @@ void draw_filled_triangle(ColorBuffer& color_buffer,
         int_swap(y0, y1);
     }
 
-    int my = y1;
-    int mx = x0 + (float)(x2 - x0) * (float)(y1 - y0) / (float)(y2 - y0);
-    // Draw Flat-bottom triangle
-    if (y1 != y0)
+    if (y1 == y2)
     {
-        // Find the 2 slopes
-        float inv_slope1 = (float)(x1 - x0) / (y1 - y0);
-        float inv_slope2 = (float)(mx - x0) / (my - y0);
-
-        float x_start = x0;
-        float x_end = x0;
-
-        for (int y = y0; y <= my; ++y)
-        {
-            for (int x = (int)round(x_start); x <= (int)round(x_end); ++x)
-            {
-                draw_pixel(color_buffer, x, y, color);
-            }
-            x_start += inv_slope1;
-            x_end += inv_slope2;
-        }
+        fill_flat_bottom_triangle(color_buffer, x0, y0, x1, y1, x2, y2, color);
     }
-
-
-    // Draw Flat-top triangle
-    if (y1 != y2)
+    else if (y0 == y1)
     {
-        // Find the 2 slopes
-        float inv_slope1 = (float)(x2 - x1) / (y2 - y1);
-        float inv_slope2 = (float)(x2 - mx) / (y2 - my);
+        fill_flat_top_triangle(color_buffer, x0, y0, x1, y1, x2, y2, color);
+    }
+    else
+    {
+        int my = y1;
+        int mx = x0 + (float)(x2 - x0) * (float)(y1 - y0) / (float)(y2 - y0);
 
-        float x_start = x2;
-        float x_end = x2;
-
-        for (int y = y2; y >= my; --y)
+        fill_flat_bottom_triangle(color_buffer, x0, y0, x1, y1, mx, my, color);
+        fill_flat_top_triangle(color_buffer, x1, y1, mx, my, x2, y2, color);
+        // Draw Flat-bottom triangle
+        /*if (y1 != y0)
         {
-            for (int x = (int)round(x_start); x <= (int)round(x_end); ++x)
+            // Find the 2 slopes
+            float inv_slope1 = (float)(x1 - x0) / (y1 - y0);
+            float inv_slope2 = (float)(mx - x0) / (my - y0);
+
+            float x_start = x0;
+            float x_end = x0;
+
+            for (int y = y0; y <= my; ++y)
             {
-                draw_pixel(color_buffer, x, y, color);
+                for (int x = (int)round(x_start); x <= (int)round(x_end); ++x)
+                {
+                    draw_pixel(color_buffer, x, y, color);
+                }
+                x_start += inv_slope1;
+                x_end += inv_slope2;
             }
-            x_start -= inv_slope2;
-            x_end -= inv_slope1;
         }
+
+
+        // Draw Flat-top triangle
+        if (y1 != y2)
+        {
+            // Find the 2 slopes
+            float inv_slope1 = (float)(x2 - x1) / (y2 - y1);
+            float inv_slope2 = (float)(x2 - mx) / (y2 - my);
+
+            float x_start = x2;
+            float x_end = x2;
+
+            for (int y = y2; y >= my; --y)
+            {
+                for (int x = (int)round(x_start); x <= (int)round(x_end); ++x)
+                {
+                    draw_pixel(color_buffer, x, y, color);
+                }
+                x_start -= inv_slope2;
+                x_end -= inv_slope1;
+            }
+        }*/
     }
 }

@@ -19,4 +19,5 @@ struct face_t
 struct triangle_t
 {
     vec2_t points[3];
+    float  avg_depth = 0.0f;
 };

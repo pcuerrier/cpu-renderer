@@ -137,3 +137,13 @@ vec3_t vec3_t::rotate_z(float angle) const
         z
     };
 }
+
+vec4_t vec3_t::to_vec4() const
+{
+    return { x, y, z, 1.0f };
+}
+
+vec3_t vec4_t::to_vec3() const
+{
+    return { x, y, z };
+}
