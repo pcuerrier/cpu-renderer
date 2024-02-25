@@ -3,6 +3,7 @@ set(BINARY ${CMAKE_PROJECT_NAME})
 set(SOURCES
     matrix.cpp
     triangle.cpp
+    light.cpp
     mesh.cpp
     vector.cpp
     display.cpp

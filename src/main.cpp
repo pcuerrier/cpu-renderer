@@ -4,6 +4,7 @@
 
 #include "display.h"
 #include "vector.h"
+#include "light.h"
 #include "matrix.h"
 #include "mesh.h"
 #include "triangle.h"
@@ -30,6 +31,7 @@ const float SCALE = 640.0f;
  * Globals
 *******************************************************************************/
 static vec3_t camera_pos = { 0.0f, 0.0f, -5.0f };
+static light_t light = { 0.0f, 0.0f, 1.0f };
 static mat4_t projection_matrix = mat4_identity();
 static std::vector<triangle_t> triangles;
 
@@ -134,9 +136,9 @@ void process_input(SDL_API& sdl, ColorBuffer& color_buffer)
 *******************************************************************************/
 void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
 {
-    mesh.rotation.x += 0.01f;
-    //mesh.rotation.y += 0.01f;
-    //mesh.rotation.z += 0.01f;
+    mesh.rotation.x += 0.03f;
+    //mesh.rotation.y += 0.03f;
+    //mesh.rotation.z += 0.03f;
 
     //mesh.scale.x += 0.002f;
     //mesh.scale.y += 0.001f;
@@ -178,22 +180,26 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
             transformed_vertices[j] = transformed_vertex;
         }
 
+        vec3_t vertex_a = transformed_vertices[0].to_vec3(); /*   A   */
+        vec3_t vertex_b = transformed_vertices[1].to_vec3(); /*  / \  */
+        vec3_t vertex_c = transformed_vertices[2].to_vec3(); /* C---B */
+
+        vec3_t vector_ab = vertex_b - vertex_a;
+        vec3_t vector_ac = vertex_c - vertex_a;
+        vec3_t normal = vector_ab.cross_product(vector_ac);
+        normal.normalize();
+
         // Back-face culling
         if (sdl.culling)
         {
-            vec3_t vertex_a = transformed_vertices[0].to_vec3(); /*   A   */
-            vec3_t vertex_b = transformed_vertices[1].to_vec3(); /*  / \  */
-            vec3_t vertex_c = transformed_vertices[2].to_vec3(); /* C---B */
-
-            vec3_t vector_ab = vertex_b - vertex_a;
-            vec3_t vector_ac = vertex_c - vertex_a;
-            vec3_t normal = vector_ab.cross_product(vector_ac);
-            normal.normalize();
             vec3_t camera_ray = camera_pos - vertex_a;
 
             float dot_normal_camera = normal.dot_product(camera_ray);
             if (dot_normal_camera <= 0) { continue; }
         }
+
+        // Light shading (flat-shading)
+        float percentage = -normal.dot_product(light.direction);
 
         triangle_t projected_triangle = {};
         float cumulative_z = 0.0f;
@@ -215,6 +221,7 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
             cumulative_z += projected_point.z;
         }
         projected_triangle.avg_depth = cumulative_z / 3.0f;
+        projected_triangle.color = light_apply_intensity(mesh_face.color, percentage);
         triangles.push_back(projected_triangle);
     }
 
@@ -289,7 +296,7 @@ void render(const SDL_API& sdl, ColorBuffer& color_buffer)
                 (int)round(triangle.points[1].y),
                 (int)round(triangle.points[2].x),
                 (int)round(triangle.points[2].y),
-                0xFFFFFF00
+                triangle.color
             );
         }
     }
@@ -342,8 +349,12 @@ int main(int argc, char* argv[])
 #ifdef WIN32
     create_mesh_from_obj("../../../assets/f22.obj", mesh);
 #else
-    create_mesh_from_obj("../../assets/cube.obj", mesh);
+    create_mesh_from_obj("../../assets/f22.obj", mesh);
 #endif
+    for (auto& triangle : mesh.faces)
+    {
+        triangle.color = 0xFFFF1144;
+    }
 
     // Main Loop
     while (sdl.is_running)

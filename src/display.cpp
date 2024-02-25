@@ -188,7 +188,7 @@ void draw_line(ColorBuffer& color_buffer, int x0, int y0, int x1, int y1,
     float current_x = (float)x0;
     float current_y = (float)y0;
 
-    for (int i = 0; i < side_length; ++i)
+    for (int i = 0; i <= side_length; ++i)
     {
         draw_pixel(color_buffer, (int)round(current_x),
                    (int)round(current_y), color);
