@@ -1,7 +1,53 @@
 #include "mesh.h"
 #include <stdio.h>
 #include <cstring>
-static void parse_face(char* line, mesh_t& out_mesh)
+
+mesh_t mesh;
+
+vec3_t cube_vertices[N_CUBE_VERTICES] = {
+    { -1.0f, -1.0f, -1.0f }, // 1
+    { -1.0f,  1.0f, -1.0f }, // 2
+    {  1.0f,  1.0f, -1.0f }, // 3
+    {  1.0f, -1.0f, -1.0f }, // 4
+    {  1.0f,  1.0f,  1.0f }, // 5
+    {  1.0f, -1.0f,  1.0f }, // 6
+    { -1.0f,  1.0f,  1.0f }, // 7
+    { -1.0f, -1.0f,  1.0f }  // 8
+};
+
+face_t cube_faces[N_CUBE_FACES] = {
+    // front
+    { 1, 2, 3, { 0, 1 }, { 0, 0 }, { 1, 0 }, 0xFFFFFFFF },
+    { 1, 3, 4, { 0, 1 }, { 1, 0 }, { 1, 1 }, 0xFFFFFFFF },
+    // right
+    { 4, 3, 5, { 0, 1 }, { 0, 0 }, { 1, 0 }, 0xFFFFFFFF },
+    { 4, 5, 6, { 0, 1 }, { 1, 0 }, { 1, 1 }, 0xFFFFFFFF },
+    // back
+    { 6, 5, 7, { 0, 1 }, { 0, 0 }, { 1, 0 }, 0xFFFFFFFF },
+    { 6, 7, 8, { 0, 1 }, { 1, 0 }, { 1, 1 }, 0xFFFFFFFF },
+    // left
+    { 8, 7, 2, { 0, 1 }, { 0, 0 }, { 1, 0 }, 0xFFFFFFFF },
+    { 8, 2, 1, { 0, 1 }, { 1, 0 }, { 1, 1 }, 0xFFFFFFFF },
+    // top
+    { 2, 7, 5, { 0, 1 }, { 0, 0 }, { 1, 0 }, 0xFFFFFFFF },
+    { 2, 5, 3, { 0, 1 }, { 1, 0 }, { 1, 1 }, 0xFFFFFFFF },
+    // bottom
+    { 6, 8, 1, { 0, 1 }, { 0, 0 }, { 1, 0 }, 0xFFFFFFFF },
+    { 6, 1, 4, { 0, 1 }, { 1, 0 }, { 1, 1 }, 0xFFFFFFFF }
+};
+
+void load_cube_mesh_data(void) {
+    for (int i = 0; i < N_CUBE_VERTICES; i++) {
+        vec3_t cube_vertex = cube_vertices[i];
+        mesh.vertices.push_back(cube_vertex);
+    }
+    for (int i = 0; i < N_CUBE_FACES; i++) {
+        face_t cube_face = cube_faces[i];
+        mesh.faces.push_back(cube_face);
+    }
+}
+
+static void parse_face(char* line, mesh_t& out_mesh, const std::vector<tex2_t>& texcoords)
 {
     
     // Possible Read
@@ -32,6 +78,9 @@ static void parse_face(char* line, mesh_t& out_mesh)
     }
 
     face_t face = {};
+    int vertex_indices[3] = {};
+    int texture_indices[3] = {};
+    int normal_indices[3] = {};
     switch (nbSlashes)
     {
         case 0:
@@ -45,39 +94,53 @@ static void parse_face(char* line, mesh_t& out_mesh)
 
         case 1: // Texture coords
         {
-            face_t texCoords = {};
 #ifdef WIN32
             sscanf_s(line, "f %d/%d %d/%d %d/%d",
-                &face.a, &texCoords.a,
-                &face.b, &texCoords.b,
-                &face.c, &texCoords.c);
+                &vertex_indices[0], &texture_indices[0],
+                &vertex_indices[1], &texture_indices[1],
+                &vertex_indices[2], &texture_indices[2]);
 #else
             sscanf(line, "f %d/%d %d/%d %d/%d",
-                &face.a, &texCoords.a,
-                &face.b, &texCoords.b,
-                &face.c, &texCoords.c);
+                &vertex_indices[0], &texture_indices[0],
+                &vertex_indices[1], &texture_indices[1],
+                &vertex_indices[2], &texture_indices[2]);
 #endif
         } break;
 
         // TODO: Probably broken for v//vn
         case 2: // Texture coords and vertex normals
         {
-            face_t texCoords = {};
-            face_t normals = {};
 #ifdef WIN32
             sscanf_s(line, "f %d/%d/%d %d/%d/%d %d/%d/%d",
-                &face.a, &texCoords.a, &normals.a,
-                &face.b, &texCoords.b, &normals.b,
-                &face.c, &texCoords.c, &normals.c);
+                &vertex_indices[0], &texture_indices[0], &normal_indices[0],
+                &vertex_indices[1], &texture_indices[1], &normal_indices[1],
+                &vertex_indices[2], &texture_indices[2], &normal_indices[2]);
 #else
             sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d",
-                &face.a, &texCoords.a, &normals.a,
-                &face.b, &texCoords.b, &normals.b,
-                &face.c, &texCoords.c, &normals.c);
+                &vertex_indices[0], &texture_indices[0], &normal_indices[0],
+                &vertex_indices[1], &texture_indices[1], &normal_indices[1],
+                &vertex_indices[2], &texture_indices[2], &normal_indices[2]);
 #endif
         } break;
     }
+    face.a = vertex_indices[0] - 1;
+    face.b = vertex_indices[1] - 1;
+    face.c = vertex_indices[2] - 1;
+    face.a_uv = texcoords[texture_indices[0] - 1];
+    face.b_uv = texcoords[texture_indices[1] - 1];
+    face.c_uv = texcoords[texture_indices[2] - 1];
     out_mesh.faces.push_back(face);
+}
+
+static void parse_texture_coords(char* line, mesh_t& out_mesh, std::vector<tex2_t>& texcoords)
+{
+    tex2_t texcoord = {};
+#ifdef WIN32
+    sscanf_s(line, "vt %f %f", &texcoord.u, &texcoord.v);
+#else
+    sscanf(line, "vt %f %f", &vertex.x, &vertex.y);
+#endif
+    texcoords.push_back(texcoord);
 }
 
 static void parse_vertex_index(char* line, mesh_t& out_mesh)
@@ -110,6 +173,7 @@ bool create_mesh_from_obj(const char* filepath, mesh_t& out_mesh)
     }
 
     char line[2024];
+    std::vector<tex2_t> texcoords;
     while (fgets(line, 1024, file_ptr))
     {
         switch (line[0])
@@ -122,12 +186,17 @@ bool create_mesh_from_obj(const char* filepath, mesh_t& out_mesh)
                     {
                         parse_vertex_index(line, out_mesh);
                     } break;
+
+                    case 't':
+                    {
+                        parse_texture_coords(line, out_mesh, texcoords);
+                    } break;
                 }
             } break;
 
             case 'f':
             {
-                parse_face(line, out_mesh);
+                parse_face(line, out_mesh, texcoords);
             } break;
         }
     }

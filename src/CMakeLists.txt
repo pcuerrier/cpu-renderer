@@ -1,6 +1,7 @@
 set(BINARY ${CMAKE_PROJECT_NAME})
 
 set(SOURCES
+    picopng.cpp
     swap.cpp
     matrix.cpp
     texture.cpp
@@ -19,7 +20,7 @@ message(CMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}")
 message(ROOT_DIR="${ROOT_DIR}")
 
 IF (WIN32)
-target_compile_options(${BINARY}_run PRIVATE -W4 -WX -wd4201)
+target_compile_options(${BINARY}_run PRIVATE -W4 -wd4201 -wd4244 -wd4100 -wd4996 -wd4458 -wd4838)
 ELSE()
 target_compile_options(${BINARY}_run PRIVATE -Wall -Wextra -Werror -fms-extensions)
 ENDIF()

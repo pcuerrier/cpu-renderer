@@ -17,15 +17,15 @@ struct face_t
         };
         int data[3];
     };
-    uint32_t color;
     tex2_t a_uv;
     tex2_t b_uv;
     tex2_t c_uv;
+    uint32_t color;
 };
 
 struct triangle_t
 {
-    vec2_t points[3];
+    vec4_t points[3];
     tex2_t texcoord[3];
     uint32_t color = 0x0;
     float  avg_depth = 0.0f;

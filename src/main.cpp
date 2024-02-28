@@ -1,3 +1,6 @@
+#ifdef WIN32
+#define _USE_MATH_DEFINES
+#endif
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_timer.h>
@@ -35,9 +38,6 @@ static vec3_t camera_pos = { 0.0f, 0.0f, -5.0f };
 static light_t light = { 0.0f, 0.0f, 1.0f };
 static mat4_t projection_matrix = mat4_identity();
 static std::vector<triangle_t> triangles;
-
-static mesh_t mesh;
-static uint32_t* mesh_texture = nullptr;
 
 /*******************************************************************************
  * Process Input & Events
@@ -106,7 +106,7 @@ void process_input(SDL_API& sdl, ColorBuffer& color_buffer)
                 resize_color_buffer(sdl, color_buffer, width, height);
 
                 // Remake perspective matrix
-                float fov = M_PI / 3.0f; // 60 deg
+                float fov = (float)M_PI / 3.0f; // 60 deg
                 float aspect = (float)color_buffer.height / color_buffer.width;
                 float znear = 0.1f;
                 float zfar = 100.0f;
@@ -146,9 +146,9 @@ void process_input(SDL_API& sdl, ColorBuffer& color_buffer)
 *******************************************************************************/
 void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
 {
-    //mesh.rotation.x += 0.03f;
-    //mesh.rotation.y += 0.03f;
-    //mesh.rotation.z += 0.03f;
+    mesh.rotation.x += 0.03f;
+    mesh.rotation.y += 0.03f;
+    mesh.rotation.z += 0.03f;
 
     //mesh.scale.x += 0.002f;
     //mesh.scale.y += 0.001f;
@@ -172,18 +172,15 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
     {
         face_t mesh_face = mesh.faces[i];
         const vec3_t face_vertices[3] = {
-            mesh.vertices[mesh_face.a - 1],
-            mesh.vertices[mesh_face.b - 1],
-            mesh.vertices[mesh_face.c - 1]
+            mesh.vertices[mesh_face.a],
+            mesh.vertices[mesh_face.b],
+            mesh.vertices[mesh_face.c]
         };
 
         vec4_t transformed_vertices[3];
         for (int j = 0; j < 3; ++j)
         {
             vec4_t transformed_vertex = face_vertices[j].to_vec4();
-            //transformed_vertex = transformed_vertex.rotate_x(mesh.rotation.x);
-            //transformed_vertex = transformed_vertex.rotate_y(mesh.rotation.y);
-            //transformed_vertex = transformed_vertex.rotate_z(mesh.rotation.z);
 
             transformed_vertex = world_matrix.mul_vec4(transformed_vertex);
             transformed_vertex.z -= camera_pos.z;
@@ -196,6 +193,8 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
 
         vec3_t vector_ab = vertex_b - vertex_a;
         vec3_t vector_ac = vertex_c - vertex_a;
+        vector_ab.normalize();
+        vector_ac.normalize();
         vec3_t normal = vector_ab.cross_product(vector_ac);
         normal.normalize();
 
@@ -208,9 +207,6 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
             if (dot_normal_camera <= 0) { continue; }
         }
 
-        // Light shading (flat-shading)
-        float percentage = -normal.dot_product(light.direction);
-
         triangle_t projected_triangle = {};
         float cumulative_z = 0.0f;
         for (int j = 0; j < 3; ++j)
@@ -218,12 +214,13 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
             //vec2_t projected_point = project(transformed_vertices[j]);
             vec4_t projected_point = mat4_mul_vec4_project(projection_matrix, transformed_vertices[j]);
 
+            // Invert the y values to account for y screen coordinates
+            //projected_point.y *= -1.0f;
+
             // Scale into the view
             projected_point.x *= window_width / 2.0f;
             projected_point.y *= window_height / 2.0f;
 
-            // Invert the y values to account for y screen coordinates
-            projected_point.y = -projected_point.y;
 
             // Translate the points to the middle of the screen
             projected_point.x += window_width / 2.0f;
@@ -231,8 +228,13 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
 
             projected_triangle.points[j].x = projected_point.x;
             projected_triangle.points[j].y = projected_point.y;
+            projected_triangle.points[j].z = projected_point.z;
+            projected_triangle.points[j].w = projected_point.w;
             cumulative_z += projected_point.z;
         }
+        // Light shading (flat-shading)
+        float percentage = -normal.dot_product(light.direction);
+
         projected_triangle.avg_depth = cumulative_z / 3.0f;
         projected_triangle.color = light_apply_intensity(mesh_face.color, percentage);
         projected_triangle.texcoord[0] = mesh_face.a_uv;
@@ -300,12 +302,18 @@ void render(const SDL_API& sdl, ColorBuffer& color_buffer)
         {
             draw_textured_triangle(
                 color_buffer,
-                (int)round(triangle.points[0].x),
-                (int)round(triangle.points[0].y),
-                (int)round(triangle.points[1].x),
-                (int)round(triangle.points[1].y),
-                (int)round(triangle.points[2].x),
-                (int)round(triangle.points[2].y),
+                triangle.points[0].x,
+                triangle.points[0].y,
+                triangle.points[0].z,
+                triangle.points[0].w,
+                triangle.points[1].x,
+                triangle.points[1].y,
+                triangle.points[1].z,
+                triangle.points[1].w,
+                triangle.points[2].x,
+                triangle.points[2].y,
+                triangle.points[2].z,
+                triangle.points[2].w,
                 triangle.texcoord[0].u,
                 triangle.texcoord[0].v,
                 triangle.texcoord[1].u,
@@ -324,11 +332,11 @@ void render(const SDL_API& sdl, ColorBuffer& color_buffer)
         {
             // Draw wireframe
             draw_line(color_buffer, triangle.points[0].x, triangle.points[0].y,
-                      triangle.points[1].x, triangle.points[1].y, 0xFF0000FF);
+                      triangle.points[1].x, triangle.points[1].y, 0xFFFFFFFF);
             draw_line(color_buffer, triangle.points[1].x, triangle.points[1].y,
-                      triangle.points[2].x, triangle.points[2].y, 0xFF0000FF);
+                      triangle.points[2].x, triangle.points[2].y, 0xFFFFFFFF);
             draw_line(color_buffer, triangle.points[2].x, triangle.points[2].y,
-                      triangle.points[0].x, triangle.points[0].y, 0xFF0000FF);
+                      triangle.points[0].x, triangle.points[0].y, 0xFFFFFFFF);
         }
         if (sdl.render_mode == RENDER_MODE::WIREFRAME_DOTS)
         {
@@ -357,6 +365,26 @@ void render(const SDL_API& sdl, ColorBuffer& color_buffer)
 }
 
 /*******************************************************************************
+ * Setup resources
+*******************************************************************************/
+void setup()
+{
+#ifdef WIN32
+    create_mesh_from_obj("../../../assets/cube.obj", mesh);
+    // Load the texture information from an external PNG file
+    load_png_texture_data("../../../assets/cube.png");
+#else
+    create_mesh_from_obj("../../assets/cube.obj", mesh);
+#endif
+    //load_cube_mesh_data();
+
+    for (auto& triangle : mesh.faces)
+    {
+        triangle.color = 0xFFFFFFFF;
+    }
+}
+
+/*******************************************************************************
  * Main Entry
 *******************************************************************************/
 int main(int argc, char* argv[])
@@ -374,42 +402,13 @@ int main(int argc, char* argv[])
     create_color_buffer(sdl, color_buffer);
     clear_color_buffer(color_buffer, 0xFF18191A);
 
-    float fov = M_PI / 3.0f; // 60 deg
+    float fov = (float)M_PI / 3.0f; // 60 deg
     float aspect = (float)color_buffer.height / color_buffer.width;
     float znear = 0.1f;
     float zfar = 100.0f;
     projection_matrix = mat4_make_perspective(fov, aspect, znear, zfar);
 
-    //
-    //char cwd[PATH_MAX];
-    //getcwd(cwd, sizeof(cwd));
-    //fprintf(stdout, "CWD : %s\n", cwd);
-#ifdef WIN32
-    create_mesh_from_obj("../../../assets/f22.obj", mesh);
-#else
-    create_mesh_from_obj("../../assets/cube.obj", mesh);
-#endif
-
-    // Load hardcoded texture
-    mesh_texture = (uint32_t*)REDBRICK_TEXTURE;
-
-    int i = 0;
-    for (auto& triangle : mesh.faces)
-    {
-        if (i++ % 2)
-        {
-            triangle.a_uv = { 1.0f, 0.0f };
-            triangle.b_uv = { 1.0f, 1.0f };
-            triangle.c_uv = { 1.0f, 0.0f };
-        }
-        else
-        {
-            triangle.a_uv = { 0.0f, 0.0f };
-            triangle.b_uv = { 1.0f, 0.0f };
-            triangle.c_uv = { 0.0f, 1.0f };
-        }
-        triangle.color = 0xFFFF1144;
-    }
+    setup();
 
     // Main Loop
     while (sdl.is_running)

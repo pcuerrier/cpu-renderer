@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "picopng.h"
 
 struct tex2_t
 {
@@ -8,7 +9,10 @@ struct tex2_t
     float v = 0.0f;
 };
 
-extern int texture_width;
-extern int texture_height;
+extern unsigned long texture_width;
+extern unsigned long texture_height;
 
-extern const uint8_t REDBRICK_TEXTURE[]; 
+extern std::vector<unsigned char> png_texture;
+extern uint32_t* mesh_texture;
+
+void load_png_texture_data(const char* filename);

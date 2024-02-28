@@ -77,7 +77,7 @@ void create_color_buffer(SDL_API sdl, ColorBuffer& color_buffer)
     color_buffer.memory = (uint32_t*)malloc(sizeof(uint32_t) * width * height);
     color_buffer.texture = SDL_CreateTexture(
         sdl.renderer,
-        SDL_PIXELFORMAT_ARGB8888,
+        SDL_PIXELFORMAT_RGBA32,
         SDL_TEXTUREACCESS_STREAMING,
         width,
         height
@@ -342,24 +342,50 @@ void draw_filled_triangle(ColorBuffer& color_buffer,
     }
 }
 
-void draw_texel(ColorBuffer& color_buffer, int x, int y, uint32_t* texture,
-                vec2_t a, vec2_t b, vec2_t c, float u0, float v0,
-                float u1, float v1, float u2, float v2)
+void draw_texel(ColorBuffer& color_buffer,
+    int x, int y, uint32_t* texture,
+    vec4_t point_a, vec4_t point_b, vec4_t point_c,
+    tex2_t a_uv, tex2_t b_uv, tex2_t c_uv)
 {
-    vec3_t weights = barycentric_weights(a, b, c, { (float)x, (float)y });
-    float u_point = weights.x * u0 + weights.y * u1 + weights.z * u2;
-    float v_point = weights.x * v0 + weights.y * v1 + weights.z * v2;
+    vec2_t p = { x, y };
+    vec2_t a = { point_a.x, point_a.y };
+    vec2_t b = { point_b.x, point_b.y };
+    vec2_t c = { point_c.x, point_c.y };
 
-    int tex_x = abs((int)(u_point * texture_width));
-    int tex_y = abs((int)(v_point * texture_height));
-    uint32_t color = texture[texture_width * tex_y + tex_x];
-    draw_pixel(color_buffer, x, y, color);
+    // Calculate the barycentric coordinates of our point 'p' inside the triangle
+    vec3_t weights = barycentric_weights(a, b, c, p);
+
+    float alpha = weights.x;
+    float beta = weights.y;
+    float gamma = weights.z;
+
+    // Variables to store the interpolated values of U, V, and also 1/w for the current pixel
+    float interpolated_u;
+    float interpolated_v;
+    float interpolated_reciprocal_w;
+
+    // Perform the interpolation of all U/w and V/w values using barycentric weights and a factor of 1/w
+    interpolated_u = (a_uv.u / point_a.w) * alpha + (b_uv.u / point_b.w) * beta + (c_uv.u / point_c.w) * gamma;
+    interpolated_v = (a_uv.v / point_a.w) * alpha + (b_uv.v / point_b.w) * beta + (c_uv.v / point_c.w) * gamma;
+
+    // Also interpolate the value of 1/w for the current pixel
+    interpolated_reciprocal_w = (1 / point_a.w) * alpha + (1 / point_b.w) * beta + (1 / point_c.w) * gamma;
+
+    // Now we can divide back both interpolated values by 1/w
+    interpolated_u /= interpolated_reciprocal_w;
+    interpolated_v /= interpolated_reciprocal_w;
+
+    // Map the UV coordinate to the full texture width and height
+    int tex_x = abs((int)(interpolated_u * texture_width)) % texture_width;
+    int tex_y = abs((int)(interpolated_v * texture_height)) % texture_height;
+
+    draw_pixel(color_buffer, x, y, texture[(texture_width * tex_y) + tex_x]);
 }
 
 void draw_textured_triangle(ColorBuffer& color_buffer,
-                            int x0, int y0,
-                            int x1, int y1,
-                            int x2, int y2,
+                            int x0, int y0, float z0, float w0,
+                            int x1, int y1, float z1, float w1,
+                            int x2, int y2, float z2, float w2,
                             float u0, float v0,
                             float u1, float v1,
                             float u2, float v2,
@@ -371,6 +397,8 @@ void draw_textured_triangle(ColorBuffer& color_buffer,
     {
         int_swap(x0, x1);
         int_swap(y0, y1);
+        float_swap(z0, z1);
+        float_swap(w0, w1);
         float_swap(u0, u1);
         float_swap(v0, v1);
     }
@@ -378,6 +406,8 @@ void draw_textured_triangle(ColorBuffer& color_buffer,
     {
         int_swap(x1, x2);
         int_swap(y1, y2);
+        float_swap(z1, z2);
+        float_swap(w1, w2);
         float_swap(u1, u2);
         float_swap(v1, v2);
     }
@@ -386,73 +416,72 @@ void draw_textured_triangle(ColorBuffer& color_buffer,
     {
         int_swap(x0, x1);
         int_swap(y0, y1);
+        float_swap(z0, z1);
+        float_swap(w0, w1);
         float_swap(u0, u1);
         float_swap(v0, v1);
     }
 
-    // Draw top-part of the triangle
-    float inv_slope1 = 0.0f;
-    float inv_slope2 = 0.0f;
+    vec4_t point_a = { x0, y0, z0, w0 };
+    vec4_t point_b = { x1, y1, z1, w1 };
+    vec4_t point_c = { x2, y2, z2, w2 };
+    tex2_t a_uv = { u0, v0 };
+    tex2_t b_uv = { u1, v1 };
+    tex2_t c_uv = { u2, v2 };
 
-    if (y1 - y0 != 0.0f)
-    {
-        inv_slope1 = (float)(x1 - x0) / abs(y1 - y0);
-    }
-    if (y2 - y0 != 0.0f)
-    {
-        inv_slope2 = (float)(x2 - x0) / abs(y2 - y0);
-    }
+    ///////////////////////////////////////////////////////
+    // Render the upper part of the triangle (flat-bottom)
+    ///////////////////////////////////////////////////////
+    float inv_slope_1 = 0.0f;
+    float inv_slope_2 = 0.0f;
 
-    vec2_t a = { (float)x0, (float)y0 };
-    vec2_t b = { (float)x1, (float)y1 };
-    vec2_t c = { (float)x2, (float)y2 };
+    if (y1 - y0 != 0) inv_slope_1 = (float)(x1 - x0) / abs(y1 - y0);
+    if (y2 - y0 != 0) inv_slope_2 = (float)(x2 - x0) / abs(y2 - y0);
+
     if (y1 - y0 != 0.0f)
     {
         for (int y = y0; y <= y1; ++y)
         {
-            int x_start = x1 + (y - y1) * inv_slope1;
-            int x_end = x0 + (y - y0) * inv_slope2;
+            int x_start = x1 + (y - y1) * inv_slope_1;
+            int x_end = x0 + (y - y0) * inv_slope_2;
 
-            if (x_start > x_end)
-            {
-                int_swap(x_start, x_end);
+            if (x_end < x_start) {
+                int_swap(x_start, x_end); // swap if x_start is to the right of x_end
             }
 
-            for (int x = x_start; x <= x_end; ++x)
+            for (int x = x_start; x < x_end; ++x)
             {
-                draw_texel(color_buffer, x, y, texture, a, b, c, u0, v0, u1, v1, u2, v2);
+                // Draw our pixel with the color that comes from the texture
+                draw_texel(color_buffer, x, y, texture, point_a, point_b, point_c, a_uv, b_uv, c_uv);
             }
         }
     }
 
-    // Draw bottom-part of the triangle
-    inv_slope1 = 0.0f;
-    inv_slope2 = 0.0f;
+    ///////////////////////////////////////////////////////
+    // Render the bottom part of the triangle (flat-top)
+    ///////////////////////////////////////////////////////
+    inv_slope_1 = 0.0f;
+    inv_slope_2 = 0.0f;
+
+    if (y2 - y1 != 0.0f) inv_slope_1 = (float)(x2 - x1) / abs(y2 - y1);
+    if (y2 - y0 != 0.0f) inv_slope_2 = (float)(x2 - x0) / abs(y2 - y0);
 
     if (y2 - y1 != 0.0f)
     {
-        inv_slope1 = (float)(x2 - x1) / abs(y2 - y1);
-    }
-    if (y2 - y0 != 0.0f)
-    {
-        inv_slope2 = (float)(x2 - x0) / abs(y2 - y0);
-    }
-
-    if (y2 - y0 != 0.0f)
-    {
         for (int y = y1; y <= y2; ++y)
         {
-            int x_start = x1 + (y - y1) * inv_slope1;
-            int x_end = x0 + (y - y0) * inv_slope2;
+            int x_start = x1 + (y - y1) * inv_slope_1;
+            int x_end = x0 + (y - y0) * inv_slope_2;
 
-            if (x_start > x_end)
+            if (x_end < x_start)
             {
-                int_swap(x_start, x_end);
+                int_swap(x_start, x_end); // swap if x_start is to the right of x_end
             }
 
-            for (int x = x_start; x <= x_end; ++x)
+            for (int x = x_start; x < x_end; ++x)
             {
-                draw_texel(color_buffer, x, y, texture, a, b, c, u0, v0, u1, v1, u2, v2);
+                // Draw our pixel with the color that comes from the texture
+                draw_texel(color_buffer, x, y, texture, point_a, point_b, point_c, a_uv, b_uv, c_uv);
             }
         }
     }
