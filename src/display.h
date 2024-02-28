@@ -9,7 +9,9 @@ enum class RENDER_MODE
     WIREFRAME_DOTS,
     WIREFRAME_LINES,
     FILLED_TRIANGLES,
-    FILLED_TRIANGLES_AND_WIREFRAME
+    FILLED_TRIANGLES_AND_WIREFRAME,
+    TEXTURED_TRIANGLES,
+    TEXTURED_TRIANGLES_AND_WIREFRAME
 };
 
 struct SDL_API
@@ -19,7 +21,7 @@ struct SDL_API
     bool          is_running  = false;
     bool          fullscreen  = true;
     bool          culling     = true;
-    RENDER_MODE   render_mode = RENDER_MODE::FILLED_TRIANGLES_AND_WIREFRAME;
+    RENDER_MODE   render_mode = RENDER_MODE::FILLED_TRIANGLES;
 };
 
 struct ColorBuffer
@@ -64,3 +66,11 @@ void draw_filled_triangle(ColorBuffer& color_buffer,
                           int x1, int y1,
                           int x2, int y2,
                           uint32_t color);
+void draw_textured_triangle(ColorBuffer& color_buffer,
+                            int x0, int y0,
+                            int x1, int y1,
+                            int x2, int y2,
+                            float u0, float v0,
+                            float u1, float v1,
+                            float u2, float v2,
+                            uint32_t* texture);

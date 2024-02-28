@@ -7,6 +7,7 @@
 #include "light.h"
 #include "matrix.h"
 #include "mesh.h"
+#include "texture.h"
 #include "triangle.h"
 
 #include <vector>
@@ -23,7 +24,7 @@
 /*******************************************************************************
  * Constants
 *******************************************************************************/
-const int FPS = 30;
+const int FPS = 60;
 const float FRAME_TARGET_TIME = (1000.0f) / FPS;
 const float SCALE = 640.0f;
 
@@ -36,6 +37,7 @@ static mat4_t projection_matrix = mat4_identity();
 static std::vector<triangle_t> triangles;
 
 static mesh_t mesh;
+static uint32_t* mesh_texture = nullptr;
 
 /*******************************************************************************
  * Process Input & Events
@@ -87,6 +89,14 @@ void process_input(SDL_API& sdl, ColorBuffer& color_buffer)
                 {
                     sdl.render_mode = RENDER_MODE::FILLED_TRIANGLES_AND_WIREFRAME;
                 }
+                else if (event.key.keysym.sym == SDLK_5)
+                {
+                    sdl.render_mode = RENDER_MODE::TEXTURED_TRIANGLES;
+                }
+                else if (event.key.keysym.sym == SDLK_6)
+                {
+                    sdl.render_mode = RENDER_MODE::TEXTURED_TRIANGLES_AND_WIREFRAME;
+                }
             } break;
 
             case SDL_EVENT_WINDOW_RESIZED:
@@ -136,7 +146,7 @@ void process_input(SDL_API& sdl, ColorBuffer& color_buffer)
 *******************************************************************************/
 void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
 {
-    mesh.rotation.x += 0.03f;
+    //mesh.rotation.x += 0.03f;
     //mesh.rotation.y += 0.03f;
     //mesh.rotation.z += 0.03f;
 
@@ -212,6 +222,9 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
             projected_point.x *= window_width / 2.0f;
             projected_point.y *= window_height / 2.0f;
 
+            // Invert the y values to account for y screen coordinates
+            projected_point.y = -projected_point.y;
+
             // Translate the points to the middle of the screen
             projected_point.x += window_width / 2.0f;
             projected_point.y += window_height / 2.0f;
@@ -222,6 +235,9 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
         }
         projected_triangle.avg_depth = cumulative_z / 3.0f;
         projected_triangle.color = light_apply_intensity(mesh_face.color, percentage);
+        projected_triangle.texcoord[0] = mesh_face.a_uv;
+        projected_triangle.texcoord[1] = mesh_face.b_uv;
+        projected_triangle.texcoord[2] = mesh_face.c_uv;
         triangles.push_back(projected_triangle);
     }
 
@@ -265,7 +281,46 @@ void render(const SDL_API& sdl, ColorBuffer& color_buffer)
     for (uint32_t i = 0; i < triangles.size(); ++i)
     {
         triangle_t triangle = triangles[i];
-        if (sdl.render_mode != RENDER_MODE::FILLED_TRIANGLES)
+        if (sdl.render_mode == RENDER_MODE::FILLED_TRIANGLES ||
+            sdl.render_mode == RENDER_MODE::FILLED_TRIANGLES_AND_WIREFRAME)
+        {
+            draw_filled_triangle(
+                color_buffer,
+                (int)round(triangle.points[0].x),
+                (int)round(triangle.points[0].y),
+                (int)round(triangle.points[1].x),
+                (int)round(triangle.points[1].y),
+                (int)round(triangle.points[2].x),
+                (int)round(triangle.points[2].y),
+                triangle.color
+            );
+        }
+        else if (sdl.render_mode == RENDER_MODE::TEXTURED_TRIANGLES ||
+                 sdl.render_mode == RENDER_MODE::TEXTURED_TRIANGLES_AND_WIREFRAME)
+        {
+            draw_textured_triangle(
+                color_buffer,
+                (int)round(triangle.points[0].x),
+                (int)round(triangle.points[0].y),
+                (int)round(triangle.points[1].x),
+                (int)round(triangle.points[1].y),
+                (int)round(triangle.points[2].x),
+                (int)round(triangle.points[2].y),
+                triangle.texcoord[0].u,
+                triangle.texcoord[0].v,
+                triangle.texcoord[1].u,
+                triangle.texcoord[1].v,
+                triangle.texcoord[2].u,
+                triangle.texcoord[2].v,
+                mesh_texture
+            );
+        }
+
+        // WIREFRAME mode
+        if (sdl.render_mode == RENDER_MODE::WIREFRAME_DOTS ||
+            sdl.render_mode == RENDER_MODE::WIREFRAME_LINES ||
+            sdl.render_mode == RENDER_MODE::FILLED_TRIANGLES_AND_WIREFRAME ||
+            sdl.render_mode == RENDER_MODE::TEXTURED_TRIANGLES_AND_WIREFRAME)
         {
             // Draw wireframe
             draw_line(color_buffer, triangle.points[0].x, triangle.points[0].y,
@@ -285,20 +340,6 @@ void render(const SDL_API& sdl, ColorBuffer& color_buffer)
             draw_rect(color_buffer, triangle.points[2].x, triangle.points[2].y,
                       3, 3, 0xFFFF0000);
         }
-        else if (sdl.render_mode == RENDER_MODE::FILLED_TRIANGLES ||
-                 sdl.render_mode == RENDER_MODE::FILLED_TRIANGLES_AND_WIREFRAME)
-        {
-            draw_filled_triangle(
-                color_buffer,
-                (int)round(triangle.points[0].x),
-                (int)round(triangle.points[0].y),
-                (int)round(triangle.points[1].x),
-                (int)round(triangle.points[1].y),
-                (int)round(triangle.points[2].x),
-                (int)round(triangle.points[2].y),
-                triangle.color
-            );
-        }
     }
     triangles.clear();
 
@@ -309,9 +350,6 @@ void render(const SDL_API& sdl, ColorBuffer& color_buffer)
         color_buffer.memory,
         sizeof(uint32_t) * color_buffer.width
     );
-    //SDL_FRect rect = {};
-    //rect.w = (float)color_buffer.width;
-    //rect.h = (float)color_buffer.height;
     SDL_RenderTexture(sdl.renderer, color_buffer.texture, NULL, NULL);
     clear_color_buffer(color_buffer, 0xFF18191A);
 
@@ -349,10 +387,27 @@ int main(int argc, char* argv[])
 #ifdef WIN32
     create_mesh_from_obj("../../../assets/f22.obj", mesh);
 #else
-    create_mesh_from_obj("../../assets/f22.obj", mesh);
+    create_mesh_from_obj("../../assets/cube.obj", mesh);
 #endif
+
+    // Load hardcoded texture
+    mesh_texture = (uint32_t*)REDBRICK_TEXTURE;
+
+    int i = 0;
     for (auto& triangle : mesh.faces)
     {
+        if (i++ % 2)
+        {
+            triangle.a_uv = { 1.0f, 0.0f };
+            triangle.b_uv = { 1.0f, 1.0f };
+            triangle.c_uv = { 1.0f, 0.0f };
+        }
+        else
+        {
+            triangle.a_uv = { 0.0f, 0.0f };
+            triangle.b_uv = { 1.0f, 0.0f };
+            triangle.c_uv = { 0.0f, 1.0f };
+        }
         triangle.color = 0xFFFF1144;
     }
 

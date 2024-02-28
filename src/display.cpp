@@ -1,4 +1,7 @@
 #include "display.h"
+#include "swap.h"
+#include "triangle.h"
+#include "texture.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -208,14 +211,6 @@ void draw_triangle(ColorBuffer& color_buffer,
     draw_line(color_buffer, x2, y2, x0, y0, color);
 }
 
-// TODO: Move to separat file
-void int_swap(int& a, int& b)
-{
-    int temp = a;
-    a = b;
-    b = temp;
-}
-
 /*******************************************************************************
 ** Draw a filled a triangle with a flat bottom
 ********************************************************************************
@@ -344,47 +339,121 @@ void draw_filled_triangle(ColorBuffer& color_buffer,
 
         fill_flat_bottom_triangle(color_buffer, x0, y0, x1, y1, mx, my, color);
         fill_flat_top_triangle(color_buffer, x1, y1, mx, my, x2, y2, color);
-        // Draw Flat-bottom triangle
-        /*if (y1 != y0)
+    }
+}
+
+void draw_texel(ColorBuffer& color_buffer, int x, int y, uint32_t* texture,
+                vec2_t a, vec2_t b, vec2_t c, float u0, float v0,
+                float u1, float v1, float u2, float v2)
+{
+    vec3_t weights = barycentric_weights(a, b, c, { (float)x, (float)y });
+    float u_point = weights.x * u0 + weights.y * u1 + weights.z * u2;
+    float v_point = weights.x * v0 + weights.y * v1 + weights.z * v2;
+
+    int tex_x = abs((int)(u_point * texture_width));
+    int tex_y = abs((int)(v_point * texture_height));
+    uint32_t color = texture[texture_width * tex_y + tex_x];
+    draw_pixel(color_buffer, x, y, color);
+}
+
+void draw_textured_triangle(ColorBuffer& color_buffer,
+                            int x0, int y0,
+                            int x1, int y1,
+                            int x2, int y2,
+                            float u0, float v0,
+                            float u1, float v1,
+                            float u2, float v2,
+                            uint32_t* texture)
+{
+    (void)texture;
+    // Sort vertices by ascending y-coordinate (y0 < y1 < y2)
+    if (y0  > y1)
+    {
+        int_swap(x0, x1);
+        int_swap(y0, y1);
+        float_swap(u0, u1);
+        float_swap(v0, v1);
+    }
+    if (y1  > y2)
+    {
+        int_swap(x1, x2);
+        int_swap(y1, y2);
+        float_swap(u1, u2);
+        float_swap(v1, v2);
+    }
+    // y0 y1 might have changed due to swap
+    if (y0  > y1)
+    {
+        int_swap(x0, x1);
+        int_swap(y0, y1);
+        float_swap(u0, u1);
+        float_swap(v0, v1);
+    }
+
+    // Draw top-part of the triangle
+    float inv_slope1 = 0.0f;
+    float inv_slope2 = 0.0f;
+
+    if (y1 - y0 != 0.0f)
+    {
+        inv_slope1 = (float)(x1 - x0) / abs(y1 - y0);
+    }
+    if (y2 - y0 != 0.0f)
+    {
+        inv_slope2 = (float)(x2 - x0) / abs(y2 - y0);
+    }
+
+    vec2_t a = { (float)x0, (float)y0 };
+    vec2_t b = { (float)x1, (float)y1 };
+    vec2_t c = { (float)x2, (float)y2 };
+    if (y1 - y0 != 0.0f)
+    {
+        for (int y = y0; y <= y1; ++y)
         {
-            // Find the 2 slopes
-            float inv_slope1 = (float)(x1 - x0) / (y1 - y0);
-            float inv_slope2 = (float)(mx - x0) / (my - y0);
+            int x_start = x1 + (y - y1) * inv_slope1;
+            int x_end = x0 + (y - y0) * inv_slope2;
 
-            float x_start = x0;
-            float x_end = x0;
-
-            for (int y = y0; y <= my; ++y)
+            if (x_start > x_end)
             {
-                for (int x = (int)round(x_start); x <= (int)round(x_end); ++x)
-                {
-                    draw_pixel(color_buffer, x, y, color);
-                }
-                x_start += inv_slope1;
-                x_end += inv_slope2;
+                int_swap(x_start, x_end);
+            }
+
+            for (int x = x_start; x <= x_end; ++x)
+            {
+                draw_texel(color_buffer, x, y, texture, a, b, c, u0, v0, u1, v1, u2, v2);
             }
         }
+    }
 
+    // Draw bottom-part of the triangle
+    inv_slope1 = 0.0f;
+    inv_slope2 = 0.0f;
 
-        // Draw Flat-top triangle
-        if (y1 != y2)
+    if (y2 - y1 != 0.0f)
+    {
+        inv_slope1 = (float)(x2 - x1) / abs(y2 - y1);
+    }
+    if (y2 - y0 != 0.0f)
+    {
+        inv_slope2 = (float)(x2 - x0) / abs(y2 - y0);
+    }
+
+    if (y2 - y0 != 0.0f)
+    {
+        for (int y = y1; y <= y2; ++y)
         {
-            // Find the 2 slopes
-            float inv_slope1 = (float)(x2 - x1) / (y2 - y1);
-            float inv_slope2 = (float)(x2 - mx) / (y2 - my);
+            int x_start = x1 + (y - y1) * inv_slope1;
+            int x_end = x0 + (y - y0) * inv_slope2;
 
-            float x_start = x2;
-            float x_end = x2;
-
-            for (int y = y2; y >= my; --y)
+            if (x_start > x_end)
             {
-                for (int x = (int)round(x_start); x <= (int)round(x_end); ++x)
-                {
-                    draw_pixel(color_buffer, x, y, color);
-                }
-                x_start -= inv_slope2;
-                x_end -= inv_slope1;
+                int_swap(x_start, x_end);
             }
-        }*/
+
+            for (int x = x_start; x <= x_end; ++x)
+            {
+                draw_texel(color_buffer, x, y, texture, a, b, c, u0, v0, u1, v1, u2, v2);
+            }
+        }
     }
 }

@@ -1,7 +1,9 @@
 set(BINARY ${CMAKE_PROJECT_NAME})
 
 set(SOURCES
+    swap.cpp
     matrix.cpp
+    texture.cpp
     triangle.cpp
     light.cpp
     mesh.cpp
