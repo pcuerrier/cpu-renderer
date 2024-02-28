@@ -32,6 +32,8 @@ struct ColorBuffer
     uint32_t     height   = 0;
 };
 
+extern float* z_buffer;
+
 /*******************************************************************************
  * SDL related Functions
 *******************************************************************************/
@@ -42,6 +44,7 @@ void    destroy_window(SDL_API& sdl);
  * Color Buffer related Functions
 *******************************************************************************/
 void clear_color_buffer(ColorBuffer& color_buffer, uint32_t color);
+void clear_z_buffer(ColorBuffer& color_buffer);
 void create_color_buffer(SDL_API sdl, ColorBuffer& color_buffer);
 void resize_color_buffer(SDL_API sdl, ColorBuffer& color_buffer, uint32_t width,
                          uint32_t height);
@@ -62,9 +65,9 @@ void draw_triangle(ColorBuffer& color_buffer,
                    int x2, int y2,
                    uint32_t color);
 void draw_filled_triangle(ColorBuffer& color_buffer,
-                          int x0, int y0,
-                          int x1, int y1,
-                          int x2, int y2,
+                          int x0, int y0, float z0, float w0,
+                          int x1, int y1, float z1, float w1,
+                          int x2, int y2, float z2, float w2,
                           uint32_t color);
 void draw_textured_triangle(ColorBuffer& color_buffer,
                             // z and w used in perspective correctness texture mapping

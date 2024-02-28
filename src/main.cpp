@@ -146,9 +146,9 @@ void process_input(SDL_API& sdl, ColorBuffer& color_buffer)
 *******************************************************************************/
 void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
 {
-    mesh.rotation.x += 0.03f;
-    mesh.rotation.y += 0.03f;
-    mesh.rotation.z += 0.03f;
+    mesh.rotation.x += 0.02f;
+    //mesh.rotation.y += 0.03f;
+    //mesh.rotation.z += 0.03f;
 
     //mesh.scale.x += 0.002f;
     //mesh.scale.y += 0.001f;
@@ -172,9 +172,9 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
     {
         face_t mesh_face = mesh.faces[i];
         const vec3_t face_vertices[3] = {
-            mesh.vertices[mesh_face.a],
-            mesh.vertices[mesh_face.b],
-            mesh.vertices[mesh_face.c]
+            mesh.vertices[mesh_face.a - 1],
+            mesh.vertices[mesh_face.b - 1],
+            mesh.vertices[mesh_face.c - 1]
         };
 
         vec4_t transformed_vertices[3];
@@ -183,7 +183,6 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
             vec4_t transformed_vertex = face_vertices[j].to_vec4();
 
             transformed_vertex = world_matrix.mul_vec4(transformed_vertex);
-            transformed_vertex.z -= camera_pos.z;
             transformed_vertices[j] = transformed_vertex;
         }
 
@@ -208,14 +207,12 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
         }
 
         triangle_t projected_triangle = {};
-        float cumulative_z = 0.0f;
         for (int j = 0; j < 3; ++j)
         {
-            //vec2_t projected_point = project(transformed_vertices[j]);
             vec4_t projected_point = mat4_mul_vec4_project(projection_matrix, transformed_vertices[j]);
 
             // Invert the y values to account for y screen coordinates
-            //projected_point.y *= -1.0f;
+            projected_point.y *= -1.0f;
 
             // Scale into the view
             projected_point.x *= window_width / 2.0f;
@@ -230,31 +227,15 @@ void update(const SDL_API& sdl, uint32_t window_width, uint32_t window_height)
             projected_triangle.points[j].y = projected_point.y;
             projected_triangle.points[j].z = projected_point.z;
             projected_triangle.points[j].w = projected_point.w;
-            cumulative_z += projected_point.z;
         }
         // Light shading (flat-shading)
         float percentage = -normal.dot_product(light.direction);
 
-        projected_triangle.avg_depth = cumulative_z / 3.0f;
         projected_triangle.color = light_apply_intensity(mesh_face.color, percentage);
         projected_triangle.texcoord[0] = mesh_face.a_uv;
         projected_triangle.texcoord[1] = mesh_face.b_uv;
         projected_triangle.texcoord[2] = mesh_face.c_uv;
         triangles.push_back(projected_triangle);
-    }
-
-    // TODO: Sort triangles based on the avg_depth
-    for (size_t i = 0; i < triangles.size(); ++i)
-    {
-        for (size_t j = i + 1; j < triangles.size(); ++j)
-        {
-            if (triangles[i].avg_depth < triangles[j].avg_depth)
-            {
-                triangle_t temp = triangles[i];
-                triangles[i] = triangles[j];
-                triangles[j] = temp;
-            }
-        }
     }
 }
 
@@ -288,12 +269,18 @@ void render(const SDL_API& sdl, ColorBuffer& color_buffer)
         {
             draw_filled_triangle(
                 color_buffer,
-                (int)round(triangle.points[0].x),
-                (int)round(triangle.points[0].y),
-                (int)round(triangle.points[1].x),
-                (int)round(triangle.points[1].y),
-                (int)round(triangle.points[2].x),
-                (int)round(triangle.points[2].y),
+                triangle.points[0].x,
+                triangle.points[0].y,
+                triangle.points[0].z,
+                triangle.points[0].w,
+                triangle.points[1].x,
+                triangle.points[1].y,
+                triangle.points[1].z,
+                triangle.points[1].w,
+                triangle.points[2].x,
+                triangle.points[2].y,
+                triangle.points[2].z,
+                triangle.points[2].w,
                 triangle.color
             );
         }
@@ -360,6 +347,7 @@ void render(const SDL_API& sdl, ColorBuffer& color_buffer)
     );
     SDL_RenderTexture(sdl.renderer, color_buffer.texture, NULL, NULL);
     clear_color_buffer(color_buffer, 0xFF18191A);
+    clear_z_buffer(color_buffer);
 
     SDL_RenderPresent(sdl.renderer);
 }
@@ -401,6 +389,7 @@ int main(int argc, char* argv[])
     ColorBuffer color_buffer = {};
     create_color_buffer(sdl, color_buffer);
     clear_color_buffer(color_buffer, 0xFF18191A);
+    clear_z_buffer(color_buffer);
 
     float fov = (float)M_PI / 3.0f; // 60 deg
     float aspect = (float)color_buffer.height / color_buffer.width;
